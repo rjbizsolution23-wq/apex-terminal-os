@@ -118,41 +118,49 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
       <div class="flex items-center gap-3.5">
         <img
+          id="brand-logo-header"
           src="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg"
-          alt="RJ Business Solutions Official Logo"
+          alt="Official Brand Logo"
           class="w-11 h-11 rounded-lg object-cover border border-blue-200 shadow-sm"
         />
         <div>
-          <div class="font-display font-bold text-slate-900 text-lg leading-tight tracking-tight">
+          <div id="brand-company-header" class="font-display font-bold text-slate-900 text-lg leading-tight tracking-tight uppercase">
             RJ BUSINESS SOLUTIONS
           </div>
-          <div class="text-[11px] font-display uppercase tracking-widest text-blue-600 font-bold">
+          <div id="brand-tagline-header" class="text-[11px] font-display uppercase tracking-widest text-blue-600 font-bold">
             Autonomous Enterprise Architecture
           </div>
         </div>
       </div>
 
-      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+      <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
         <a href="#simulator" class="hover:text-blue-600 transition">Interactive Demo</a>
-        <a href="#capabilities" class="hover:text-blue-600 transition">12-Ability Engine</a>
+        <a href="#capabilities" class="hover:text-blue-600 transition">13-Ability Engine</a>
         <a href="#router" class="hover:text-blue-600 transition">9-Model Neural Router</a>
         <a href="#comparison" class="hover:text-blue-600 transition">ROI Matrix</a>
         <a href="#pricing" class="hover:text-blue-600 transition">Licensing</a>
       </nav>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
+        <button
+          onclick="openWhiteLabelStudio()"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-display font-bold transition"
+          title="Add your own Logo, Brand & Stripe Keys to sell this to your audience"
+        >
+          <span>💰 White-Label &amp; Monetize</span>
+        </button>
         <a
           href="https://github.com/rjbizsolution23-wq/apex-terminal-os"
           target="_blank"
           rel="noopener"
-          class="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:text-blue-600 text-xs font-semibold transition"
+          class="hidden lg:inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:text-blue-600 text-xs font-semibold transition"
         >
           <span>GitHub Repo</span>
           <span>↗</span>
         </a>
         <a
           href="#pricing"
-          class="rj-btn-gradient text-white font-display font-bold text-xs sm:text-sm px-5 py-2.5 rounded-lg shadow-sm"
+          class="rj-btn-gradient text-white font-display font-bold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow-sm"
         >
           Get Instant License →
         </a>
@@ -572,7 +580,7 @@
               Developer Edition
             </h3>
             <div class="mt-4 flex items-baseline gap-2">
-              <span class="font-display text-4xl font-bold text-slate-900">$197</span>
+              <span id="price-dev-amount" class="font-display text-4xl font-bold text-slate-900">$197</span>
               <span class="text-xs text-slate-500 font-medium uppercase">One-Time License</span>
             </div>
             <p class="text-slate-600 text-sm mt-3">
@@ -580,7 +588,7 @@
             </p>
 
             <ul class="mt-6 space-y-3 text-sm text-slate-700 border-t border-slate-100 pt-6">
-              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>12-Ability Startup Command Center</strong> (<code class="text-xs">m</code> / <code class="text-xs">menu</code>)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>13-Ability Startup Command Center</strong> (<code class="text-xs">m</code> / <code class="text-xs">menu</code>)</span></li>
               <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>500+ Command Fuzzy Arsenal</strong> (<code class="text-xs">apex</code>) across 9 domains</span></li>
               <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Hermetic Sandbox Runner</strong> (<code class="text-xs">sandbox</code>) &amp; <code class="text-xs">runlast</code></span></li>
               <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Live Interactive Canvas Server</strong> (<code class="text-xs">canvas</code> on port 7799)</span></li>
@@ -590,13 +598,14 @@
 
           <div class="mt-8 space-y-2.5">
             <a
+              id="btn-stripe-dev"
               href="https://buy.stripe.com/7sY7sDbCI0fb49N8j7eEq35"
               class="block text-center w-full py-3.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-sm shadow transition"
             >
               💳 Pay with Stripe ($197) →
             </a>
             <button
-              onclick="openCheckoutModal('developer', 'Solo Operator — Developer Edition', '$197')"
+              onclick="openCheckoutModal('developer', 'Solo Operator — Developer Edition', packageCatalog.developer.price)"
               class="w-full py-2.5 px-4 rounded-xl border border-blue-300 text-blue-700 hover:bg-blue-50 font-display font-semibold text-xs transition"
             >
               🔑 Enter License Key / Zelle / Wire
@@ -618,7 +627,7 @@
               Sovereign Full-Spectrum Suite
             </h3>
             <div class="mt-4 flex items-baseline gap-2">
-              <span class="font-display text-4xl font-bold text-blue-600">$497</span>
+              <span id="price-pro-amount" class="font-display text-4xl font-bold text-blue-600">$497</span>
               <span class="text-xs text-slate-500 font-medium uppercase">One-Time License</span>
             </div>
             <p class="text-slate-600 text-sm mt-3">
@@ -637,13 +646,14 @@
 
           <div class="mt-8 space-y-2.5">
             <a
+              id="btn-stripe-pro"
               href="https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36"
               class="block text-center w-full py-4 px-5 rounded-xl rj-btn-gradient text-white font-display font-bold text-sm shadow-md"
             >
               💳 Pay with Stripe ($497) · Auto-Delivery →
             </a>
             <button
-              onclick="openCheckoutModal('sovereign', 'Sovereign Full-Spectrum Suite (Pro)', '$497')"
+              onclick="openCheckoutModal('sovereign', 'Sovereign Full-Spectrum Suite (Pro)', packageCatalog.sovereign.price)"
               class="w-full py-2.5 px-4 rounded-xl border border-blue-300 text-blue-700 hover:bg-blue-50 font-display font-semibold text-xs transition"
             >
               🔑 Enter License Key / Zelle / Wire
@@ -662,7 +672,7 @@
               Enterprise Agency Fleet
             </h3>
             <div class="mt-4 flex items-baseline gap-2">
-              <span class="font-display text-4xl font-bold text-slate-900">$1,997</span>
+              <span id="price-ent-amount" class="font-display text-4xl font-bold text-slate-900">$1,997</span>
               <span class="text-xs text-slate-500 font-medium uppercase">Enterprise License</span>
             </div>
             <p class="text-slate-600 text-sm mt-3">
@@ -672,21 +682,22 @@
             <ul class="mt-6 space-y-3 text-sm text-slate-700 border-t border-slate-100 pt-6">
               <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Unlimited Team &amp; Client Installations</strong></span></li>
               <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Full White-Label Rebranding Rights</strong> (Your company name &amp; custom startup menu)</span></li>
-              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Custom Internal Cheatsheet Vaults</strong> tailored to your company's cloud &amp; SOPs</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Turnkey Stripe Monetization Engine</strong> (Add your Logo &amp; Stripe Keys to resell to your audience)</span></li>
               <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>1Password CLI &amp; Cloudflare Zero-Trust</strong> team provisioning templates</span></li>
-              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>1-on-1 Architecture Session</strong> with Rick Jefferson</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>1-on-1 Architecture Session</strong> with Lead Architect</span></li>
             </ul>
           </div>
 
           <div class="mt-8 space-y-2.5">
             <a
+              id="btn-stripe-ent"
               href="https://buy.stripe.com/28E8wHeOU0fbdKnczneEq37"
               class="block text-center w-full py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-sm transition shadow"
             >
               💳 Pay with Stripe ($1,997) →
             </a>
             <button
-              onclick="openCheckoutModal('enterprise', 'Enterprise Agency Fleet & White-Label License', '$1,997')"
+              onclick="openCheckoutModal('enterprise', 'Enterprise Agency Fleet & White-Label License', packageCatalog.enterprise.price)"
               class="w-full py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-display font-semibold text-xs transition"
             >
               🔑 Enter License Key / Zelle / Wire
@@ -874,6 +885,7 @@
 
       <div class="mt-6 flex items-center justify-between gap-3">
         <a
+          id="modal-support-mailto"
           href="mailto:support@rjbusinesssolutions.org?subject=Apex%20Terminal%20OS%20v2.0%20Payment%20Confirmation"
           class="text-xs font-semibold text-blue-600 hover:underline"
         >
@@ -884,22 +896,141 @@
     </div>
   </div>
 
+  <!-- TURNKEY WHITE-LABEL & STRIPE MONETIZATION STUDIO MODAL -->
+  <div id="whitelabel-studio-modal" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-3xl w-full p-7 border-2 border-blue-600 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+      <button onclick="closeWhiteLabelStudio()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+      <span class="rj-badge">TURNKEY RESELLER &amp; AGENCY MONETIZATION ENGINE</span>
+      <h3 class="font-display text-2xl font-bold text-slate-900 mt-2">
+        Add Your Logo, Brand &amp; Stripe Keys — Monetize to Your Audience
+      </h3>
+      <p class="text-xs text-slate-600 mt-1">
+        Anyone who downloads or clones this repository can plug in their own Company Name, Logo, Custom Pricing, and Stripe Keys below. Click <strong>Auto-Create My 3 Stripe Payment Links</strong> to provision the products on your Stripe account, preview your branded storefront live, download your custom <code class="font-mono text-blue-600">index.html</code>, or copy the 1-line CLI command.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-5 text-xs">
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Your Company / Agency Name</label>
+          <input id="wl-company" type="text" value="RJ Business Solutions" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 font-medium text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Product Title</label>
+          <input id="wl-brand" type="text" value="APEX TERMINAL OS" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 font-medium text-slate-900" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Your Logo Image URL (PNG / JPG / SVG)</label>
+          <input id="wl-logo" type="url" value="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Founder / Lead Architect Name</label>
+          <input id="wl-founder" type="text" value="Rick Jefferson" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Support Email &amp; Zelle Handle</label>
+          <input id="wl-email" type="email" value="support@rjbusinesssolutions.org" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">License Key Prefix (e.g. RJ, ACME)</label>
+          <input id="wl-prefix" type="text" value="RJ" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 font-mono uppercase text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Your Hosted Page URL (For Auto-Redirect Delivery)</label>
+          <input id="wl-delivery-url" type="url" value="https://rjbizsolution23-wq.github.io/apex-terminal-os/" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-slate-900" />
+        </div>
+      </div>
+
+      <!-- CUSTOM TIER PRICING -->
+      <div class="grid grid-cols-3 gap-3 mt-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Tier 1 (Dev) USD</label>
+          <input id="wl-price-dev" type="number" value="197" class="mt-1 w-full px-3 py-1.5 rounded border border-slate-300 font-display font-bold text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-blue-600">Tier 2 (Pro) USD</label>
+          <input id="wl-price-pro" type="number" value="497" class="mt-1 w-full px-3 py-1.5 rounded border border-blue-300 font-display font-bold text-blue-700" />
+        </div>
+        <div>
+          <label class="block font-display font-bold uppercase text-[10px] text-slate-500">Tier 3 (Enterprise) USD</label>
+          <input id="wl-price-ent" type="number" value="1997" class="mt-1 w-full px-3 py-1.5 rounded border border-slate-300 font-display font-bold text-slate-900" />
+        </div>
+      </div>
+
+      <!-- AUTOMATIC STRIPE KEY PROVISIONING -->
+      <div class="mt-4 bg-blue-50/70 border border-blue-200 rounded-xl p-4 text-xs space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="font-display font-bold uppercase text-blue-900 text-[11px]">⚡ Automatic Stripe Product &amp; Payment Link Generator</span>
+          <span class="text-[10px] font-mono text-blue-700">Direct Browser → Stripe API (Never Stored on Any Server)</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <input id="wl-stripe-pk" type="text" placeholder="Publishable Key (pk_live_... or pk_test_...)" class="px-3 py-2 rounded-lg border border-blue-300 font-mono text-[11px]" />
+          <input id="wl-stripe-rk" type="password" placeholder="Secret / Restricted Key (rk_live_... or sk_live_...)" class="px-3 py-2 rounded-lg border border-blue-300 font-mono text-[11px]" />
+        </div>
+        <button
+          id="btn-auto-stripe"
+          onclick="provisionStripeFromBrowser()"
+          class="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-xs shadow transition"
+        >
+          💳 Auto-Create My 3 Stripe Products, Prices &amp; Payment Links Now →
+        </button>
+        <div id="wl-stripe-status" class="hidden text-[11px] font-mono p-2.5 rounded bg-white border border-blue-200 text-slate-800"></div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500">Tier 1 Stripe Link</label>
+            <input id="wl-link-dev" type="url" value="https://buy.stripe.com/7sY7sDbCI0fb49N8j7eEq35" class="mt-0.5 w-full px-2.5 py-1.5 rounded border border-slate-300 font-mono text-[10px]" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500">Tier 2 Stripe Link</label>
+            <input id="wl-link-pro" type="url" value="https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36" class="mt-0.5 w-full px-2.5 py-1.5 rounded border border-slate-300 font-mono text-[10px]" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500">Tier 3 Stripe Link</label>
+            <input id="wl-link-ent" type="url" value="https://buy.stripe.com/28E8wHeOU0fbdKnczneEq37" class="mt-0.5 w-full px-2.5 py-1.5 rounded border border-slate-300 font-mono text-[10px]" />
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <button
+          onclick="applyStudioPreview()"
+          class="py-3 px-4 rounded-xl rj-btn-gradient text-white font-display font-bold text-xs shadow"
+        >
+          👁️ Live-Preview My Storefront
+        </button>
+        <button
+          onclick="exportBrandedHtml()"
+          class="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-bold text-xs shadow transition"
+        >
+          ⬇️ Download Branded index.html
+        </button>
+        <button
+          onclick="copyWhiteLabelCliCommand(this)"
+          class="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-xs shadow transition"
+        >
+          📋 Copy CLI Rebrand Command
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- OFFICIAL LEGAL FOOTER -->
   <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 mt-auto">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-slate-800">
         <div class="flex items-center gap-3">
           <img
+            id="brand-logo-footer"
             src="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg"
-            alt="RJ Business Solutions Logo"
+            alt="Brand Logo"
             class="w-9 h-9 rounded object-cover border border-slate-700"
           />
           <div>
-            <div class="font-display font-bold text-white text-sm">RJ BUSINESS SOLUTIONS</div>
-            <div class="text-xs text-slate-400">1342 NM 333, Tijeras, New Mexico 87059 · support@rjbusinesssolutions.org</div>
+            <div id="brand-company-footer" class="font-display font-bold text-white text-sm uppercase">RJ BUSINESS SOLUTIONS</div>
+            <div id="brand-contact-footer" class="text-xs text-slate-400">1342 NM 333, Tijeras, New Mexico 87059 · support@rjbusinesssolutions.org</div>
           </div>
         </div>
-        <div class="text-xs text-slate-400">
+        <div id="brand-copyright-footer" class="text-xs text-slate-400">
           © 2026 RJ Business Solutions. Engineered by Rick Jefferson. All Rights Reserved.
         </div>
       </div>
@@ -1022,27 +1153,242 @@
       document.getElementById('checkout-modal').classList.remove('hidden');
     }
 
+    let activeKeyPrefix = "RJ";
+
     function validateKeyTier(rawKey) {
       const k = rawKey.trim().toUpperCase();
-      if (k === "RJ-DEV-2026") return "developer";
-      if (k === "RJ-SOV-2026") return "sovereign";
-      if (k === "RJ-ENT-2026") return "enterprise";
+      const pfx = (activeKeyPrefix || "RJ").toUpperCase();
+      if (k === "RJ-DEV-2026" || k === `${pfx}-DEV-2026`) return "developer";
+      if (k === "RJ-SOV-2026" || k === `${pfx}-SOV-2026`) return "sovereign";
+      if (k === "RJ-ENT-2026" || k === `${pfx}-ENT-2026`) return "enterprise";
 
-      // Validate keys generated by `apex-fulfill` (Format: RJ-(DEV|SOV|ENT)-XXXX-XXXX-NNX9)
+      // Validate keys generated by `apex-fulfill` (Format: <PREFIX>-(DEV|SOV|ENT)-XXXX-XXXX-NNX9)
       const parts = k.split("-");
-      if (parts.length === 5 && parts[0] === "RJ" && parts[4].endsWith("X9")) {
-        const prefix = parts[1];
+      if (parts.length === 5 && (parts[0] === "RJ" || parts[0] === pfx) && parts[4].endsWith("X9")) {
+        const tierCode = parts[1];
         const block1 = parts[2];
         const chkPart = parseInt(parts[4].slice(0, 2), 10);
         let sum = 0;
         for (let i = 0; i < block1.length; i++) sum += block1.charCodeAt(i);
         if ((sum % 97) === chkPart) {
-          if (prefix === "DEV") return "developer";
-          if (prefix === "SOV") return "sovereign";
-          if (prefix === "ENT") return "enterprise";
+          if (tierCode === "DEV") return "developer";
+          if (tierCode === "SOV") return "sovereign";
+          if (tierCode === "ENT") return "enterprise";
         }
       }
       return null;
+    }
+
+    function openWhiteLabelStudio() {
+      document.getElementById('whitelabel-studio-modal').classList.remove('hidden');
+    }
+
+    function closeWhiteLabelStudio() {
+      document.getElementById('whitelabel-studio-modal').classList.add('hidden');
+    }
+
+    function gatherStudioConfig() {
+      return {
+        company: document.getElementById('wl-company').value.trim() || "RJ Business Solutions",
+        brand: document.getElementById('wl-brand').value.trim() || "APEX TERMINAL OS",
+        logo_url: document.getElementById('wl-logo').value.trim() || "https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg",
+        founder: document.getElementById('wl-founder').value.trim() || "Rick Jefferson",
+        support_email: document.getElementById('wl-email').value.trim() || "support@rjbusinesssolutions.org",
+        key_prefix: (document.getElementById('wl-prefix').value.trim() || "RJ").toUpperCase(),
+        delivery_url: document.getElementById('wl-delivery-url').value.trim() || window.location.origin + window.location.pathname,
+        price_dev: parseInt(document.getElementById('wl-price-dev').value, 10) || 197,
+        price_pro: parseInt(document.getElementById('wl-price-pro').value, 10) || 497,
+        price_ent: parseInt(document.getElementById('wl-price-ent').value, 10) || 1997,
+        stripe_link_dev: document.getElementById('wl-link-dev').value.trim() || packageCatalog.developer.stripeUrl,
+        stripe_link_pro: document.getElementById('wl-link-pro').value.trim() || packageCatalog.sovereign.stripeUrl,
+        stripe_link_ent: document.getElementById('wl-link-ent').value.trim() || packageCatalog.enterprise.stripeUrl,
+      };
+    }
+
+    function applyRuntimeBrandConfig(cfg) {
+      if (!cfg) return;
+      activeKeyPrefix = (cfg.key_prefix || "RJ").toUpperCase();
+      document.title = `${cfg.brand} — ${cfg.company}`;
+
+      const logoHeader = document.getElementById('brand-logo-header');
+      const logoFooter = document.getElementById('brand-logo-footer');
+      if (logoHeader && cfg.logo_url) logoHeader.src = cfg.logo_url;
+      if (logoFooter && cfg.logo_url) logoFooter.src = cfg.logo_url;
+
+      const compHeader = document.getElementById('brand-company-header');
+      const compFooter = document.getElementById('brand-company-footer');
+      if (compHeader) compHeader.textContent = cfg.company.toUpperCase();
+      if (compFooter) compFooter.textContent = cfg.company.toUpperCase();
+
+      const contactFooter = document.getElementById('brand-contact-footer');
+      if (contactFooter && cfg.support_email) {
+        contactFooter.textContent = `${cfg.company} · ${cfg.support_email}`;
+      }
+      const copyFooter = document.getElementById('brand-copyright-footer');
+      if (copyFooter) {
+        copyFooter.textContent = `© 2026 ${cfg.company}. Engineered by ${cfg.founder || cfg.company}. All Rights Reserved.`;
+      }
+      const zelleEl = document.getElementById('zelle-email');
+      if (zelleEl && cfg.support_email) zelleEl.textContent = cfg.support_email;
+
+      // Update packageCatalog prices, keys & Stripe links
+      packageCatalog.developer.price = `$${cfg.price_dev}`;
+      packageCatalog.developer.name = `Solo Operator — Developer Edition ($${cfg.price_dev})`;
+      packageCatalog.developer.stripeUrl = cfg.stripe_link_dev;
+      packageCatalog.developer.defaultKey = `${activeKeyPrefix}-DEV-2026`;
+
+      packageCatalog.sovereign.price = `$${cfg.price_pro}`;
+      packageCatalog.sovereign.name = `Sovereign Full-Spectrum Suite ($${cfg.price_pro})`;
+      packageCatalog.sovereign.stripeUrl = cfg.stripe_link_pro;
+      packageCatalog.sovereign.defaultKey = `${activeKeyPrefix}-SOV-2026`;
+
+      packageCatalog.enterprise.price = `$${cfg.price_ent}`;
+      packageCatalog.enterprise.name = `Enterprise Agency Fleet & White-Label ($${cfg.price_ent})`;
+      packageCatalog.enterprise.stripeUrl = cfg.stripe_link_ent;
+      packageCatalog.enterprise.defaultKey = `${activeKeyPrefix}-ENT-2026`;
+
+      // Update DOM Pricing Cards & Stripe Buttons
+      const pDev = document.getElementById('price-dev-amount');
+      const bDev = document.getElementById('btn-stripe-dev');
+      if (pDev) pDev.textContent = `$${cfg.price_dev}`;
+      if (bDev) {
+        bDev.href = cfg.stripe_link_dev;
+        bDev.textContent = `💳 Pay with Stripe ($${cfg.price_dev}) →`;
+      }
+
+      const pPro = document.getElementById('price-pro-amount');
+      const bPro = document.getElementById('btn-stripe-pro');
+      if (pPro) pPro.textContent = `$${cfg.price_pro}`;
+      if (bPro) {
+        bPro.href = cfg.stripe_link_pro;
+        bPro.textContent = `💳 Pay with Stripe ($${cfg.price_pro}) · Auto-Delivery →`;
+      }
+
+      const pEnt = document.getElementById('price-ent-amount');
+      const bEnt = document.getElementById('btn-stripe-ent');
+      if (pEnt) pEnt.textContent = `$${cfg.price_ent}`;
+      if (bEnt) {
+        bEnt.href = cfg.stripe_link_ent;
+        bEnt.textContent = `💳 Pay with Stripe ($${cfg.price_ent}) →`;
+      }
+    }
+
+    function applyStudioPreview() {
+      const cfg = gatherStudioConfig();
+      window.APEX_BRAND_CONFIG = cfg;
+      applyRuntimeBrandConfig(cfg);
+      closeWhiteLabelStudio();
+    }
+
+    async function stripeBrowserPost(endpoint, paramsObj, secretKey) {
+      const body = new URLSearchParams(paramsObj);
+      const res = await fetch(`https://api.stripe.com/v1/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${secretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error((data.error && data.error.message) || `Stripe HTTP ${res.status}`);
+      }
+      return data;
+    }
+
+    async function provisionStripeFromBrowser() {
+      const rk = document.getElementById('wl-stripe-rk').value.trim();
+      const statusEl = document.getElementById('wl-stripe-status');
+      const btn = document.getElementById('btn-auto-stripe');
+      if (!rk) {
+        statusEl.textContent = "Please enter your Stripe Secret or Restricted Key (rk_live_... or sk_live_... or rk_test_...).";
+        statusEl.classList.remove('hidden');
+        return;
+      }
+
+      const cfg = gatherStudioConfig();
+      const baseUrl = cfg.delivery_url.replace(/\/?$/, "/");
+      const pfx = cfg.key_prefix;
+      const tiers = [
+        { slug: "developer", name: `${cfg.brand} — Developer Edition`, cents: cfg.price_dev * 100, key: `${pfx}-DEV-2026`, inputId: "wl-link-dev" },
+        { slug: "sovereign", name: `${cfg.brand} — Sovereign Pro Suite`, cents: cfg.price_pro * 100, key: `${pfx}-SOV-2026`, inputId: "wl-link-pro" },
+        { slug: "enterprise", name: `${cfg.brand} — Enterprise White-Label`, cents: cfg.price_ent * 100, key: `${pfx}-ENT-2026`, inputId: "wl-link-ent" }
+      ];
+
+      btn.disabled = true;
+      btn.textContent = "⏳ Provisioning 3 Products & Payment Links on Your Stripe Account...";
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = "Connecting to https://api.stripe.com/v1/...";
+
+      try {
+        for (const t of tiers) {
+          statusEl.textContent = `Creating ${t.name} ($${t.cents / 100})...`;
+          const prod = await stripeBrowserPost("products", {
+            name: t.name,
+            description: `${t.name} by ${cfg.company} — Instant Package Delivery.`,
+            "metadata[tier]": t.slug,
+            "metadata[unlock_code]": t.key
+          }, rk);
+
+          const price = await stripeBrowserPost("prices", {
+            product: prod.id,
+            unit_amount: String(t.cents),
+            currency: "usd"
+          }, rk);
+
+          const redirectUrl = `${baseUrl}?paid_tier=${t.slug}&unlock=${t.key}&session_id={CHECKOUT_SESSION_ID}`;
+          const plink = await stripeBrowserPost("payment_links", {
+            "line_items[0][price]": price.id,
+            "line_items[0][quantity]": "1",
+            "after_completion[type]": "redirect",
+            "after_completion[redirect][url]": redirectUrl,
+            allow_promotion_codes: "true"
+          }, rk);
+
+          document.getElementById(t.inputId).value = plink.url;
+        }
+        const updatedCfg = gatherStudioConfig();
+        window.APEX_BRAND_CONFIG = updatedCfg;
+        applyRuntimeBrandConfig(updatedCfg);
+        statusEl.textContent = "✓ All 3 Stripe Products, Prices & Auto-Delivery Payment Links created and applied to your page!";
+      } catch (err) {
+        statusEl.textContent = `✗ Stripe Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "💳 Auto-Create My 3 Stripe Products, Prices & Payment Links Now →";
+      }
+    }
+
+    function exportBrandedHtml() {
+      const cfg = gatherStudioConfig();
+      window.APEX_BRAND_CONFIG = cfg;
+      applyRuntimeBrandConfig(cfg);
+      closeWhiteLabelStudio();
+
+      const runtimeScript = `\n// [BEGIN_WHITELABEL_RUNTIME_CONFIG]\nwindow.APEX_BRAND_CONFIG = ${JSON.stringify(cfg, null, 2)};\nif (typeof applyRuntimeBrandConfig === 'function') { applyRuntimeBrandConfig(window.APEX_BRAND_CONFIG); }\n// [END_WHITELABEL_RUNTIME_CONFIG]\n`;
+      let fullHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+      fullHtml = fullHtml.replace("</script>\n</body>", `${runtimeScript}</script>\n</body>`);
+
+      const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "index.html";
+      a.click();
+    }
+
+    function copyWhiteLabelCliCommand(btn) {
+      const cfg = gatherStudioConfig();
+      const rk = document.getElementById('wl-stripe-rk').value.trim();
+      const pk = document.getElementById('wl-stripe-pk').value.trim();
+      let cmd = `apex-whitelabel --company "${cfg.company}" --brand "${cfg.brand}" --logo "${cfg.logo_url}" --founder "${cfg.founder}" --email "${cfg.support_email}" --prefix "${cfg.key_prefix}" --price-dev ${cfg.price_dev} --price-pro ${cfg.price_pro} --price-ent ${cfg.price_ent} --delivery-url "${cfg.delivery_url}"`;
+      if (rk) {
+        cmd += ` --stripe-rk "${rk}"`;
+        if (pk) cmd += ` --stripe-pk "${pk}"`;
+      } else {
+        cmd += ` --link-dev "${cfg.stripe_link_dev}" --link-pro "${cfg.stripe_link_pro}" --link-ent "${cfg.stripe_link_ent}"`;
+      }
+      copyText(cmd, btn);
     }
 
     function verifyAndDeliverPackage() {

@@ -1,56 +1,380 @@
 #!/usr/bin/env python3
 """
-🏛️ APEX TERMINAL OS — ENTERPRISE WHITE-LABEL REBRANDING ENGINE
-Included exclusively in the Enterprise Agency Fleet & White-Label Edition ($1,997).
-Allows agencies to custom-brand the 12-Ability Startup Command Center, prompt title, and organization name.
+🏛️ APEX TERMINAL OS v2.0 — TURNKEY WHITE-LABEL & STRIPE MONETIZATION ENGINE
+Engineered by Rick Jefferson | RJ Business Solutions
+
+Allows ANY user who downloads or clones this repository to:
+  1. Add their own Company Name, Logo URL, Founder Name, Website, Support Email, Zelle/Wire info, and Custom Tier Pricing.
+  2. Provide their own Stripe API keys (`pk_live_...` / `rk_live_...` or `sk_live_...`) to automatically create
+     3 live Stripe Products, 3 Prices, and 3 Payment Links (`https://buy.stripe.com/...`) on THEIR Stripe account
+     with automated post-checkout package delivery.
+  3. Automatically rebrand the Terminal OS startup banner, `apex-fulfill` license generator, `landing/index.html`,
+     `index.html`, and rebuild all 3 downloadable `.zip` & `.tar.gz` customer packages so they can immediately
+     monetize the platform to their own audience.
 """
 
-import sys
 import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
-CONFIG_PATH = Path.home() / ".apex-workspace/whitelabel.json"
+WORKSPACE_DIR = Path.home() / ".apex-workspace"
+CONFIG_PATH = WORKSPACE_DIR / "whitelabel.json"
+ENV_PATH = WORKSPACE_DIR / ".env"
 
-def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("""\033[1;36m🏛️ APEX ENTERPRISE WHITE-LABEL ENGINE\033[0m
+# Locate repository root whether invoked from bin/ or ~/.local/bin/
+SCRIPT_PATH = Path(__file__).resolve()
+REPO_CANDIDATES = [
+    SCRIPT_PATH.parent.parent,
+    Path.cwd(),
+    Path.home() / "apex-terminal-os",
+    Path("/Users/kalivibecoding/Downloads/Super-agents266/apex-terminal-os"),
+]
+REPO_ROOT = next((p for p in REPO_CANDIDATES if (p / "landing" / "index.html").exists()), SCRIPT_PATH.parent.parent)
+
+DEFAULT_BRAND = {
+    "company": "RJ Business Solutions",
+    "brand": "APEX TERMINAL OS",
+    "tagline": "VENICE SOVEREIGN COMMAND & EXECUTION CENTER",
+    "founder": "Rick Jefferson",
+    "founder_title": "Credit Technology Architect, AI Systems Builder, CEO",
+    "logo_url": "https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg",
+    "website": "https://rjbusinesssolutions.org",
+    "support_email": "support@rjbusinesssolutions.org",
+    "zelle_email": "rjbizsolution23@gmail.com",
+    "address": "1342 NM 333, Tijeras, New Mexico 87059",
+    "key_prefix": "RJ",
+    "delivery_url": "https://rjbizsolution23-wq.github.io/apex-terminal-os/",
+    "price_dev": 197,
+    "price_pro": 497,
+    "price_ent": 1997,
+    "stripe_link_dev": "https://buy.stripe.com/7sY7sDbCI0fb49N8j7eEq35",
+    "stripe_link_pro": "https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36",
+    "stripe_link_ent": "https://buy.stripe.com/28E8wHeOU0fbdKnczneEq37",
+}
+
+
+def stripe_post(endpoint: str, data: dict[str, str], api_key: str) -> dict:
+    url = f"https://api.stripe.com/v1/{endpoint}"
+    encoded = urllib.parse.urlencode(data).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=encoded,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def save_env_key(key: str, val: str) -> None:
+    WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
+    lines = []
+    if ENV_PATH.exists():
+        lines = [ln for ln in ENV_PATH.read_text(encoding="utf-8").splitlines() if not ln.startswith(f"{key}=")]
+    lines.append(f'{key}="{val}"')
+    ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    ENV_PATH.chmod(0o600)
+
+
+def provision_user_stripe(cfg: dict, stripe_rk: str, stripe_pk: str = "") -> dict:
+    """Creates 3 Products, 3 Prices, and 3 Payment Links on the user's Stripe account."""
+    if stripe_pk:
+        save_env_key("STRIPE_PUBLISHABLE_KEY", stripe_pk)
+    save_env_key("STRIPE_RESTRICTED_KEY", stripe_rk)
+
+    prefix = cfg["key_prefix"].upper()
+    base_url = cfg["delivery_url"].rstrip("/") + "/"
+    brand_title = cfg["brand"]
+    stmt = re.sub(r"[^A-Z0-9 ]", "", cfg["company"].upper())[:22].strip() or "TERMINAL OS"
+
+    tier_specs = [
+        ("developer", f"{brand_title} — Developer Edition", int(cfg["price_dev"]) * 100, f"{prefix}-DEV-2026", "packages/apex-terminal-os-developer-v2.0.zip"),
+        ("sovereign", f"{brand_title} — Sovereign Pro Suite", int(cfg["price_pro"]) * 100, f"{prefix}-SOV-2026", "packages/apex-terminal-os-sovereign-pro-v2.0.zip"),
+        ("enterprise", f"{brand_title} — Enterprise White-Label Fleet", int(cfg["price_ent"]) * 100, f"{prefix}-ENT-2026", "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip"),
+    ]
+
+    links_out = {}
+    for slug, name, cents, unlock_code, zip_rel in tier_specs:
+        print(f"  \033[1;36m==> Creating Stripe Product & Payment Link:\033[0m {name} (${cents // 100})...")
+        prod = stripe_post(
+            "products",
+            {
+                "name": name,
+                "description": f"{name} by {cfg['company']} — Instant Download & License Activation.",
+                "statement_descriptor": stmt,
+                "metadata[tier]": slug,
+                "metadata[unlock_code]": unlock_code,
+            },
+            stripe_rk,
+        )
+        price = stripe_post(
+            "prices",
+            {
+                "product": prod["id"],
+                "unit_amount": str(cents),
+                "currency": "usd",
+                "metadata[tier]": slug,
+            },
+            stripe_rk,
+        )
+        redirect_url = f"{base_url}?paid_tier={slug}&unlock={unlock_code}&session_id={{CHECKOUT_SESSION_ID}}"
+        plink = stripe_post(
+            "payment_links",
+            {
+                "line_items[0][price]": price["id"],
+                "line_items[0][quantity]": "1",
+                "after_completion[type]": "redirect",
+                "after_completion[redirect][url]": redirect_url,
+                "allow_promotion_codes": "true",
+                "metadata[tier]": slug,
+                "metadata[unlock_code]": unlock_code,
+            },
+            stripe_rk,
+        )
+        links_out[slug] = {
+            "product_id": prod["id"],
+            "price_id": price["id"],
+            "payment_link_id": plink["id"],
+            "payment_link_url": plink["url"],
+            "redirect_delivery_url": redirect_url,
+            "unlock_code": unlock_code,
+            "zip_file": zip_rel,
+        }
+        print(f"      \033[1;32m✓ Live Link:\033[0m {plink['url']}")
+
+    cfg["stripe_link_dev"] = links_out["developer"]["payment_link_url"]
+    cfg["stripe_link_pro"] = links_out["sovereign"]["payment_link_url"]
+    cfg["stripe_link_ent"] = links_out["enterprise"]["payment_link_url"]
+
+    if (REPO_ROOT / "packages").exists():
+        (REPO_ROOT / "packages" / "STRIPE_LINKS.json").write_text(
+            json.dumps(
+                {
+                    "product": cfg["brand"],
+                    "vendor": cfg["company"],
+                    "publishable_key": stripe_pk,
+                    "tiers": links_out,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    return cfg
+
+
+def apply_branding_to_files(cfg: dict) -> None:
+    """Applies white-label config + custom Stripe links to landing pages and rebuilds packages."""
+    WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+
+    # Save public brand config in repo config/brand.json (no secret keys)
+    repo_cfg_dir = REPO_ROOT / "config"
+    if repo_cfg_dir.exists():
+        (repo_cfg_dir / "brand.json").write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+
+    landing_path = REPO_ROOT / "landing" / "index.html"
+    if landing_path.exists():
+        html = landing_path.read_text(encoding="utf-8")
+        # Inject runtime WHITE_LABEL_CONFIG override before closing </script> so the page dynamically reflects their brand & links
+        marker_start = "// [BEGIN_WHITELABEL_RUNTIME_CONFIG]"
+        marker_end = "// [END_WHITELABEL_RUNTIME_CONFIG]"
+        runtime_snippet = f"""{marker_start}
+    window.APEX_BRAND_CONFIG = {json.dumps(cfg, indent=2)};
+    if (typeof applyRuntimeBrandConfig === 'function') {{
+      applyRuntimeBrandConfig(window.APEX_BRAND_CONFIG);
+    }}
+    {marker_end}"""
+
+        if marker_start in html and marker_end in html:
+            pattern = re.compile(re.escape(marker_start) + r".*?" + re.escape(marker_end), re.DOTALL)
+            html = pattern.sub(runtime_snippet, html)
+        else:
+            html = html.replace("</script>\n</body>", f"\n{runtime_snippet}\n  </script>\n</body>")
+
+        landing_path.write_text(html, encoding="utf-8")
+        root_index = REPO_ROOT / "index.html"
+        root_index.write_text(html, encoding="utf-8")
+
+        canvas_sales = WORKSPACE_DIR / "canvas" / "apex-terminal-os-sales" / "index.html"
+        if canvas_sales.parent.exists():
+            canvas_sales.write_text(html, encoding="utf-8")
+
+    # Rebuild the 3 downloadable customer packages so they include the updated branding
+    build_script = REPO_ROOT / "scripts" / "build-packages.py"
+    if build_script.exists():
+        subprocess.run([sys.executable, str(build_script)], cwd=str(REPO_ROOT))
+
+
+def run_interactive_wizard() -> None:
+    print("\033[1;36m╔══════════════════════════════════════════════════════════════════════════════╗\033[0m")
+    print("\033[1;36m║\033[0m  💰 \033[1;37mAPEX TURNKEY WHITE-LABEL & STRIPE MONETIZATION WIZARD\033[0m                    \033[1;36m║\033[0m")
+    print("\033[1;36m║\033[0m  \033[0;37mRebrand this entire OS, Landing Page & Stripe Checkout to sell to your audience\033[0m \033[1;36m║\033[0m")
+    print("\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m")
+
+    current = dict(DEFAULT_BRAND)
+    if CONFIG_PATH.exists():
+        try:
+            current.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
+    def ask(label: str, default_val: str) -> str:
+        val = input(f"\033[1;36m  • {label}\033[0m [\033[0;37m{default_val}\033[0m]: ").strip()
+        return val if val else str(default_val)
+
+    print("\n\033[1;33m[Step 1/3] Brand & Company Identity (Press ENTER to keep current value)\033[0m")
+    current["company"] = ask("Your Company / Agency Name", current["company"])
+    current["brand"] = ask("Product Name (Terminal Banner & Page Title)", current["brand"])
+    current["tagline"] = ask("Product Tagline", current["tagline"])
+    current["founder"] = ask("Founder / Lead Architect Name", current["founder"])
+    current["logo_url"] = ask("Your Brand Logo URL (PNG/JPG/SVG)", current["logo_url"])
+    current["website"] = ask("Your Main Website URL", current["website"])
+    current["support_email"] = ask("Your Support Email", current["support_email"])
+    current["zelle_email"] = ask("Your Zelle Email / Handle (Optional)", current["zelle_email"])
+    current["address"] = ask("Your Business Address", current["address"])
+    default_prefix = re.sub(r"[^A-Z]", "", current["company"].upper())[:4] or "APEX"
+    current["key_prefix"] = ask("License Key Prefix (e.g. RJ, ACME)", current.get("key_prefix") or default_prefix).upper()
+
+    print("\n\033[1;33m[Step 2/3] Pricing & Hosting URL\033[0m")
+    current["price_dev"] = int(ask("Tier 1 (Developer Edition) Price in USD", str(current["price_dev"])))
+    current["price_pro"] = int(ask("Tier 2 (Sovereign Pro Suite) Price in USD", str(current["price_pro"])))
+    current["price_ent"] = int(ask("Tier 3 (Enterprise White-Label) Price in USD", str(current["price_ent"])))
+    current["delivery_url"] = ask("Your Landing Page URL (for post-payment auto-delivery redirect)", current["delivery_url"])
+
+    print("\n\033[1;33m[Step 3/3] Automatic Stripe Product & Payment Link Setup\033[0m")
+    print("  \033[0;37mPaste your Stripe Secret/Restricted Key (rk_live_... or sk_live_... or rk_test_...)\033[0m")
+    print("  \033[0;37mto automatically create all 3 Products, Prices & Payment Links on YOUR Stripe account,\033[0m")
+    print("  \033[0;37mor press ENTER to manually paste existing payment links.\033[0m")
+    stripe_rk = input("\033[1;32m  • Stripe Secret / Restricted Key (rk_live_... / sk_live_...)\033[0m: ").strip()
+    stripe_pk = ""
+    if stripe_rk:
+        stripe_pk = input("\033[1;32m  • Stripe Publishable Key (pk_live_... — optional)\033[0m: ").strip()
+        try:
+            current = provision_user_stripe(current, stripe_rk, stripe_pk)
+        except Exception as e:
+            print(f"\033[1;31m  [!] Stripe API Error: {e}\033[0m")
+            print("  Falling back to manual payment link input...")
+            current["stripe_link_dev"] = ask("Stripe Payment Link (Developer Tier)", current["stripe_link_dev"])
+            current["stripe_link_pro"] = ask("Stripe Payment Link (Sovereign Pro Tier)", current["stripe_link_pro"])
+            current["stripe_link_ent"] = ask("Stripe Payment Link (Enterprise Tier)", current["stripe_link_ent"])
+    else:
+        current["stripe_link_dev"] = ask("Stripe Payment Link (Developer Tier)", current["stripe_link_dev"])
+        current["stripe_link_pro"] = ask("Stripe Payment Link (Sovereign Pro Tier)", current["stripe_link_pro"])
+        current["stripe_link_ent"] = ask("Stripe Payment Link (Enterprise Tier)", current["stripe_link_ent"])
+
+    apply_branding_to_files(current)
+
+    pfx = current["key_prefix"]
+    print(f"""
+\033[1;32m==============================================================================\033[0m
+\033[1;32m✓ WHITE-LABEL & MONETIZATION ENGINE CONFIGURED FOR: {current['company']}\033[0m
+\033[1;32m==============================================================================\033[0m
+  🏛️  Product Title:     {current['brand']} — {current['tagline']}
+  🖼️  Logo URL:          {current['logo_url']}
+  💳 Tier 1 (${current['price_dev']}):      {current['stripe_link_dev']}  (Key: {pfx}-DEV-2026)
+  💳 Tier 2 (${current['price_pro']}):      {current['stripe_link_pro']}  (Key: {pfx}-SOV-2026)
+  💳 Tier 3 (${current['price_ent']}):    {current['stripe_link_ent']}  (Key: {pfx}-ENT-2026)
+  📄 Rebranded Page:    {REPO_ROOT}/index.html
+  📦 Rebuilt Packages:  {REPO_ROOT}/packages/
+\033[1;32m==============================================================================\033[0m
+🚀 Push your rebranded storefront to GitHub Pages with:
+   cd {REPO_ROOT} && git add index.html landing/index.html config/brand.json packages/ && git commit -m "chore: apply custom brand & Stripe links" && git push
+""")
+
+
+def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print("""\033[1;36m🏛️ APEX TURNKEY WHITE-LABEL & STRIPE MONETIZATION CLI\033[0m
 Usage:
-  apex-whitelabel --brand "ACME CYBERSECURITY" --tagline "Autonomous Fleet OS"
-  apex-whitelabel --reset
-  apex-whitelabel --status
+  apex-whitelabel                       -> Launch Interactive Brand + Stripe Setup Wizard
+  apex-whitelabel --wizard              -> Launch Interactive Brand + Stripe Setup Wizard
+  apex-whitelabel --company "ACME AI" --brand "ACME OS" --logo "https://.../logo.png" \\
+                  --founder "Jane Doe" --email "support@acme.io" --website "https://acme.io" \\
+                  --price-dev 197 --price-pro 497 --price-ent 1997 \\
+                  --stripe-rk "rk_live_..." --stripe-pk "pk_live_..." \\
+                  --delivery-url "https://acme.github.io/apex-terminal-os/"
+  apex-whitelabel --status              -> View active branding & Stripe links
+  apex-whitelabel --reset               -> Revert to default RJ Business Solutions branding
 """)
         sys.exit(0)
 
+    if len(sys.argv) == 1 or sys.argv[1] in ("--wizard", "wizard", "setup", "monetize"):
+        run_interactive_wizard()
+        return
+
     if sys.argv[1] == "--reset":
-        if CONFIG_PATH.exists():
-            CONFIG_PATH.unlink()
+        apply_branding_to_files(dict(DEFAULT_BRAND))
         print("\033[1;32m✓ Reverted to default RJ Business Solutions — Apex Terminal OS branding.\033[0m")
         return
 
     if sys.argv[1] == "--status":
         if CONFIG_PATH.exists():
-            print(CONFIG_PATH.read_text())
+            print(CONFIG_PATH.read_text(encoding="utf-8"))
         else:
-            print("Default Branding: APEX TERMINAL OS — VENICE SOVEREIGN COMMAND & EXECUTION CENTER")
+            print(json.dumps(DEFAULT_BRAND, indent=2))
         return
 
-    brand = "APEX TERMINAL OS"
-    tagline = "SOVEREIGN COMMAND & EXECUTION CENTER"
+    cfg = dict(DEFAULT_BRAND)
+    if CONFIG_PATH.exists():
+        try:
+            cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
     args = sys.argv[1:]
+    stripe_rk = ""
+    stripe_pk = ""
     i = 0
+    flag_map = {
+        "--company": "company",
+        "--brand": "brand",
+        "--tagline": "tagline",
+        "--founder": "founder",
+        "--logo": "logo_url",
+        "--website": "website",
+        "--email": "support_email",
+        "--zelle": "zelle_email",
+        "--address": "address",
+        "--prefix": "key_prefix",
+        "--delivery-url": "delivery_url",
+        "--price-dev": "price_dev",
+        "--price-pro": "price_pro",
+        "--price-ent": "price_ent",
+        "--link-dev": "stripe_link_dev",
+        "--link-pro": "stripe_link_pro",
+        "--link-ent": "stripe_link_ent",
+    }
     while i < len(args):
-        if args[i] == "--brand" and i + 1 < len(args):
-            brand = args[i + 1]
+        arg = args[i]
+        if arg in flag_map and i + 1 < len(args):
+            k = flag_map[arg]
+            val = args[i + 1]
+            cfg[k] = int(val) if k.startswith("price_") else val
             i += 2
-        elif args[i] == "--tagline" and i + 1 < len(args):
-            tagline = args[i + 1]
+        elif arg == "--stripe-rk" and i + 1 < len(args):
+            stripe_rk = args[i + 1]
+            i += 2
+        elif arg == "--stripe-pk" and i + 1 < len(args):
+            stripe_pk = args[i + 1]
             i += 2
         else:
             i += 1
 
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps({"brand": brand, "tagline": tagline}, indent=2))
-    print(f"\033[1;32m✓ White-Label Branding Activated:\033[0m {brand} — {tagline}")
+    if stripe_rk:
+        cfg = provision_user_stripe(cfg, stripe_rk, stripe_pk)
+
+    apply_branding_to_files(cfg)
+    print(f"\033[1;32m✓ White-Label & Monetization Active:\033[0m {cfg['company']} — {cfg['brand']}")
+
 
 if __name__ == "__main__":
     main()

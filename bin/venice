@@ -709,6 +709,7 @@ def print_command_center_banner():
     print("\033[1;36m║\033[0m  \033[1;32m[10]\033[0m 📂 \033[1;37mRun Saved Scripts & Canvases\033[0m  (Browse & execute your workspace)    \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[11]\033[0m 🌐 \033[1;37mInstant Cloudflare Tunnel\033[0m     (Expose any local port publicly)     \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[12]\033[0m 🎬 \033[1;37mMedia Downloader (4K / MP3)\033[0m   (Download YouTube/Web video/audio)   \033[1;36m║\033[0m")
+    print("\033[1;36m║\033[0m  \033[1;32m[13]\033[0m 💰 \033[1;37mWhite-Label & Stripe Monetize\033[0m (Add your Logo, Brand & Stripe Keys) \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;33m[0 / ENTER]\033[0m 💻 \033[0;37mDrop straight to normal Zsh terminal prompt (Type `m` anytime)\033[0m \033[1;36m║\033[0m")
     print("\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m")
 
@@ -716,7 +717,7 @@ def interactive_menu(loop_forever: bool = True):
     while True:
         print_command_center_banner()
         try:
-            choice = input("\033[1;32m⚡ Pick Ability [1-12], press ENTER for Shell, or type any request > \033[0m").strip()
+            choice = input("\033[1;32m⚡ Pick Ability [1-13], press ENTER for Shell, or type any request > \033[0m").strip()
         except (KeyboardInterrupt, EOFError):
             print("")
             break
@@ -776,6 +777,11 @@ def interactive_menu(loop_forever: bool = True):
                     subprocess.run(["yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "0", url])
                 else:
                     subprocess.run(["yt-dlp", "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]", "--merge-output-format", "mp4", url])
+        elif choice == "13":
+            wl_bin = Path.home() / ".local/bin/apex-whitelabel"
+            if not wl_bin.exists():
+                wl_bin = Path(__file__).resolve().parent / "apex-whitelabel"
+            subprocess.run([sys.executable, str(wl_bin), "--wizard"])
         else:
             # User typed natural language directly into the menu prompt!
             execute_request(choice)

@@ -50,10 +50,19 @@ mkdir -p "$HOME/.apex-workspace"/{sandboxes,canvas,scripts,forge}
 # Copy latest cheatsheets into user config
 cp -r "$REPO_DIR/cheatsheets/"* "$HOME/.config/arsenal/cheatsheets/"
 
-# Install core binaries (apex + venice sovereign OS)
+# Install core binaries (apex + venice sovereign OS + whitelabel & fulfillment tools)
 cp "$REPO_DIR/bin/apex" "$HOME/.local/bin/apex"
 cp "$REPO_DIR/bin/venice" "$HOME/.local/bin/venice"
 chmod +x "$HOME/.local/bin/apex" "$HOME/.local/bin/venice"
+if [ -f "$REPO_DIR/bin/apex-whitelabel" ]; then
+    cp "$REPO_DIR/bin/apex-whitelabel" "$HOME/.local/bin/apex-whitelabel"
+    chmod +x "$HOME/.local/bin/apex-whitelabel"
+    ln -sf "$HOME/.local/bin/apex-whitelabel" "$HOME/.local/bin/apex-monetize"
+fi
+if [ -f "$REPO_DIR/bin/apex-fulfill" ]; then
+    cp "$REPO_DIR/bin/apex-fulfill" "$HOME/.local/bin/apex-fulfill"
+    chmod +x "$HOME/.local/bin/apex-fulfill"
+fi
 
 # Create all sovereign execution symlinks
 SYMLINKS=(
@@ -117,5 +126,6 @@ echo -e "\033[1;32m=============================================================
 echo -e "\033[1;32m  ✓ APEX TERMINAL OS v2.0 INSTALLED SUCCESSFULLY!                     \033[0m"
 echo -e "\033[1;32m======================================================================\033[0m"
 echo -e "Run:  \033[1;33msource ~/.zshrc\033[0m"
-echo -e "Menu: \033[1;33mm\033[0m or \033[1;33mmenu\033[0m (Launches 12-Ability Command Center)"
+echo -e "Menu: \033[1;33mm\033[0m or \033[1;33mmenu\033[0m (Launches 13-Ability Command Center)"
 echo -e "AI:   \033[1;33mai <natural language>\033[0m | \033[1;33msandbox <task>\033[0m | \033[1;33mcanvas <ui>\033[0m"
+echo -e "Sell: \033[1;33mapex-whitelabel\033[0m or \033[1;33mapex-monetize\033[0m (Add your Logo, Brand & Stripe Keys to resell)"
