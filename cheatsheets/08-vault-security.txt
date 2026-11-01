@@ -1,0 +1,14 @@
+# 🔑 VAULT, 1PASSWORD & CREDENTIALS SECURITY
+
+# --- 1Password CLI (op) Automation ---
+eval $(op signin) : Authenticate 1Password CLI with macOS Touch ID biometric unlock
+op item get "GitHub Personal Access Token" --fields password : Fetch credential dynamically without storing in plaintext
+op run --env-file=.env.template -- bun dev : Inject production secrets into app environment in-memory only
+op item create --category="API Credential" --title="Production Stripe" username="prod_key" : Securely store new secret directly into vault
+
+# --- SSH, Keys & Cryptography ---
+ssh-keygen -t ed25519 -C "rick@rjbusinesssolutions.org" : Generate modern Ed25519 cryptographic SSH key pair
+cat ~/.ssh/id_ed25519.pub | pbcopy : Copy public SSH key directly to macOS clipboard
+mkcert -install && mkcert localhost 127.0.0.1 : Generate trusted local development SSL/TLS certificates
+openssl rand -hex 32 : Generate cryptographically secure 256-bit random hex secret
+age -p -o secret.tar.gz.age secret.tar.gz : Modern passphrase encryption using Age

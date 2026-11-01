@@ -1,0 +1,107 @@
+# 🏛️ APEX TERMINAL OS — ENVIRONMENT & CONFIGURATION
+# Optimized for zsh on macOS Apple Silicon
+# 100% Exclusive Venice AI Sovereign Uncensored & Interactive Startup Menu
+
+# --- Path Architecture ---
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/.local/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+
+# --- Colors & Terminal Ergonomics ---
+export CLICOLOR=1
+export LSCOLORS="Gxfxcxdxbxegedabagacad"
+export EDITOR="code"
+
+# --- Starship Prompt Initialization ---
+if command -v starship &>/dev/null; then
+    eval "$(starship init zsh)"
+fi
+
+# --- Zsh History & Natural Language Ergonomics ---
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY
+setopt NO_NOMATCH
+
+# --- FZF Integration ---
+if command -v fzf &>/dev/null; then
+    source <(fzf --zsh 2>/dev/null)
+fi
+
+# --- FNM (Fast Node Manager) ---
+if command -v fnm &>/dev/null; then
+    eval "$(fnm env --use-on-cd 2>/dev/null)"
+fi
+
+# --- High-Velocity Productivity Aliases ---
+alias m="apex-menu"
+alias menu="apex-menu"
+alias a="apex"
+alias arsenal="apex"
+alias dev="cd ~/Developer 2>/dev/null || cd ~/Downloads"
+alias reload="unset APEX_MENU_SHOWN && source ~/.zshrc"
+alias myip="curl -s https://icanhazip.com"
+alias ports="lsof -iTCP -sTCP:LISTEN -P -n"
+alias killport="kill_port_fn() { kill -9 \$(lsof -t -i:\$1); }; kill_port_fn"
+
+# --- Cloud & Dev Servers ---
+alias tunnel="cloudflared tunnel --url"
+alias serve="bun x serve ."
+alias dps="docker ps --format 'table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}'"
+
+# --- Media Downloaders & Streamers ---
+alias get-mp3="yt-dlp -x --audio-format mp3 --audio-quality 0"
+alias get-mp4="yt-dlp -f 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]' --merge-output-format mp4"
+
+# --- Git Turbo Workflow ---
+alias gst="git status -sb"
+alias gco="git checkout"
+alias gaa="git add -A"
+alias gcm="git commit -m"
+alias lg="lazygit"
+
+# --- macOS System Controls ---
+alias awake="caffeinate -d"
+alias flushdns="sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
+
+# --- 🔓 VENICE AI NATURAL-LANGUAGE NEURAL ROUTER (NO QUOTES REQUIRED) ---
+[ -f "$HOME/.apex-workspace/.env" ] && source "$HOME/.apex-workspace/.env"
+export VENICE_BASE_URL="${VENICE_BASE_URL:-https://api.venice.ai/api/v1}"
+export VENICE_DEFAULT_MODEL="zai-org-glm-5-2"
+export VENICE_UNCENSORED_MODEL="venice-uncensored"
+export VENICE_HERETIC_MODEL="olafangensan-glm-4.7-flash-heretic"
+export VENICE_ABLITERATED_MODEL="abliteration-abliterated-model-large-v2"
+export VENICE_ROLEPLAY_MODEL="venice-uncensored-role-play"
+export VENICE_LOWEST_COST_MODEL="e2ee-qwen-2-5-7b-p"
+export VENICE_IMAGE_MODEL="lustify-v8"
+
+# `noglob` allows typing plain English with ? or * without needing quotes!
+alias ai="noglob venice"                            # Natural Language Neural Auto-Router (or Interactive Menu if no args)
+alias ask="noglob venice"                           # Natural Language Neural Auto-Router
+alias sandbox="noglob apex-sandbox"                 # Synthesize Script + Run in Hermetic Sandbox + Auto-Heal
+alias do-task="noglob apex-sandbox"                 # Synthesize & Execute Task in Sandbox Immediately
+alias canvas="noglob apex-canvas"                   # Build Live Interactive HTML5/Tailwind Canvas & Open in Browser
+alias forge="noglob apex-forge"                     # Multi-File Full Project Builder
+alias runlast="runlast"                             # Execute the last generated code block from any `ai` prompt
+alias u="noglob venice-u"                           # Force Flagship Uncensored (venice-uncensored)
+alias ab="noglob venice-ab"                         # Force Obliterated Large v2 (zero-refusal)
+alias heretic="noglob venice-heretic"               # Force GLM-4.7 Flash Heretic
+alias vg="noglob venice-glm"                        # Force Frontier GLM-5.2 Reasoning
+alias vrp="noglob venice-rp"                        # Force Uncensored Roleplay
+alias vgemma="noglob venice-gemma"                  # Force Gemma 4 Uncensored Research
+alias voss="noglob venice-oss"                      # Force GPT-OSS 120B
+alias vcheap="noglob venice-cheap"                  # Force E2EE Qwen 2.5 7B ($0.05/1M)
+alias vimg="noglob venice-img"                      # Force Uncensored Image Gen (lustify-v8)
+
+# --- Venice Piped Terminal Helpers ---
+alias aicommit='git diff --cached | venice-cheap "Write a concise conventional commit message with title and bullet points"'
+alias ucommit='git diff --cached | venice-u "Write a clean conventional commit message for this diff"'
+alias uaudit='git diff | venice-ab "Perform an aggressive, unfiltered code audit for security flaws and logical bugs"'
+
+# --- 🚀 AUTO-LAUNCH INTERACTIVE NUMBERED ABILITY MENU ON TERMINAL START ---
+if [[ -o interactive ]] && [[ -t 0 ]] && [[ -t 1 ]] && [[ -z "$APEX_MENU_SHOWN" ]] && [[ "$TERM" != "dumb" ]]; then
+    export APEX_MENU_SHOWN=1
+    "$HOME/.local/bin/venice" --startup-menu
+fi

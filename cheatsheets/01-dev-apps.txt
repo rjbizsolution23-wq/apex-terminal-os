@@ -1,0 +1,33 @@
+# ⚡ APPS & FULL-STACK DEVELOPMENT
+
+# --- Next.js & React (Bun Powered) ---
+bun create next-app my-app --typescript --tailwind --eslint --app --src-dir --use-bun : Scaffold modern Next.js 15+ App Router
+bun create react-app my-react-app : Scaffold pure client React app
+bun dev : Start development server on port 3000
+bun run build && bun start : Build production bundle and start server
+bun add <package> : Lightning-fast package install
+bun add -d <package> : Install package as devDependency
+bun pm cache rm : Purge corrupted Bun package cache
+
+# --- Hono & Modern Cloudflare APIs ---
+bun create hono my-api : Scaffold ultra-lightweight edge API (Cloudflare Workers, Bun, Node)
+bun add hono @hono/zod-validator : Add Zod schema validation to Hono routes
+wrangler dev : Start local Cloudflare Workers simulator with D1/KV bindings
+wrangler deploy : Deploy API globally across 300+ edge locations in 2 seconds
+
+# --- Python & Fast Data Science (uv Engine) ---
+uv init my-project : Scaffold modern pyproject.toml Python project
+uv run main.py : Run Python script in isolated auto-managed virtualenv
+uv run --with fastapi,uvicorn uvicorn main:app --reload : Boot instant FastAPI server on port 8000
+uv run --with pandas,openpyxl python script.py : Run data pipeline with temporary packages
+uv pip install -r requirements.txt : 10x faster pip installation
+uv venv .venv && source .venv/bin/activate : Instant local virtual environment
+uv python install 3.13 : Fetch and install isolated Python 3.13 without brew clutter
+
+# --- Go & Rust High-Throughput Services ---
+go mod init my-service : Initialize Go microservice module
+go run main.go : Run Go application immediately
+go build -ldflags="-s -w" -o service : Compile stripped, optimized single binary
+cargo new my-cli --bin : Scaffold Rust binary CLI project
+cargo run --release : Compile with LLVM optimizations and execute
+cargo clippy : Run strict linting and performance checks on Rust codebase

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# 🏛️ APEX TERMINAL OS — UNIFIED FUZZY COMMAND DISPATCHER
+# Searches hundreds of curated engineering commands, previews syntax, and copies/executes.
+
+APEX_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DATA_DIR="$APEX_ROOT/cheatsheets"
+
+# Fallback to user config if running outside repo
+if [ ! -d "$DATA_DIR" ]; then
+    DATA_DIR="$HOME/.config/arsenal/cheatsheets"
+fi
+
+if ! command -v fzf &>/dev/null; then
+    echo "Error: fzf is required. Install via: brew install fzf"
+    exit 1
+fi
+
+selected=$(grep -h -v '^#' "$DATA_DIR"/*.txt 2>/dev/null | grep -v '^[[:space:]]*$' | fzf \
+    --delimiter=" : " \
+    --with-nth=2,1 \
+    --preview="echo -e '\033[1;36mCommand:\033[0m\n{1}\n\n\033[1;33mDescription:\033[0m\n{2}'" \
+    --preview-window=down:4:wrap \
+    --header="[APEX TERMINAL OS] ENTER to copy & execute | ESC to cancel" \
+    --prompt="⚡ Apex Search > ")
+
+if [ -n "$selected" ]; then
+    cmd=$(echo "$selected" | awk -F ' : ' '{print $1}')
+    echo -n "$cmd" | pbcopy
+    echo -e "\033[1;32m✓ Copied to clipboard:\033[0m \033[1;37m$cmd\033[0m"
+    echo ""
+    read -p "Execute now? [y/N] " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        eval "$cmd"
+    fi
+fi

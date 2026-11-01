@@ -1,0 +1,23 @@
+# 🖥️ NATIVE MACOS AUTOMATION & SYSTEM CONTROL
+
+# --- Screen, Audio & Hardware ---
+screencapture -x -C /tmp/screenshot.png : Silent high-res full display screenshot
+screencapture -i -c : Interactive mouse selection screenshot copied directly to clipboard
+caffeinate -d : Prevent Mac from going to sleep while terminal command runs
+caffeinate -u -t 3600 : Keep Mac awake for next 1 hour (3600s)
+pmset -g batt : Check real-time battery status, health, and power source
+blueutil --power 1 : Turn Bluetooth ON via CLI
+blueutil --power 0 : Turn Bluetooth OFF via CLI
+switchaudio-osx -a : List all connected audio input and output devices
+switchaudio-osx -s "MacBook Pro Speakers" : Switch system audio output device immediately
+
+# --- Audio Feedback & System Notifications ---
+say -v Samantha "Process completed successfully" : Mac voice announcement
+osascript -e 'display notification "Build succeeded!" with title "System Agent" sound name "Glass"' : Native Notification Center alert
+osascript -e 'display dialog "Agent needs approval to proceed" buttons {"Cancel", "Approve"} default button "Approve"' : Interactive native popup dialog
+
+# --- AppleScript App & Window Automation ---
+osascript -e 'tell application "Safari" to open location "https://github.com"' : Open specific URL in browser
+osascript -e 'tell application "System Events" to set volume output volume 50' : Set system volume to 50%
+osascript -e 'tell application "System Events" to keystroke "c" using {command down}' : Simulate Cmd+C keyboard shortcut
+shortcuts run "Morning Routine" : Trigger native macOS shortcut workflow from terminal

@@ -1,0 +1,18 @@
+# 🧠 LOCAL AI & TERMINAL PRODUCTIVITY (OLLAMA, UV, RIPGREP, FZF)
+
+# --- Local LLM & Ollama ---
+ollama list : List all locally downloaded LLM weights
+ollama run llama3 : Start interactive session with Llama 3
+ollama run llama3 "Explain this code in 2 sentences" : One-shot question from CLI
+cat code.ts | ollama run llama3 "Find any race conditions or memory leaks" : Pipe code directly to local LLM
+git diff | ollama run llama3 "Write a clean conventional commit message for this diff" : Automated commit generator
+curl http://localhost:11434/api/generate -d '{"model": "llama3", "prompt": "Hi", "stream": false}' : Local OpenAI-style API call
+
+# --- Fast Search, Inspection & File Ergonomics ---
+rg "SECRET_KEY" --type ts : Search all TypeScript files in project in milliseconds
+rg -i "api_key" --hidden -g "!.git" : Search all files including hidden files, excluding .git
+eza -lah --git --icons : Modern replacement for ls with permissions, human sizes, and git status
+bat file.py : Modern replacement for cat with syntax highlighting and line numbers
+dust : Interactive terminal disk visualizer showing largest folders
+bottom : Modern high-performance alternative to Activity Monitor/htop in terminal
+lazygit : Full interactive terminal UI for git staging, commits, branches, and diffs

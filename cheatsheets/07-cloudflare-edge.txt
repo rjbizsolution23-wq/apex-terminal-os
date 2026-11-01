@@ -1,0 +1,20 @@
+# ⚡ CLOUDFLARE, PERSISTENCE & KV ENGINE
+
+# --- Cloudflare Workers & Pages ---
+bun create cloudflare@latest my-worker : Interactive Cloudflare project generator (TypeScript, Hono, Assets)
+wrangler dev --remote : Run Worker locally connected to real live Cloudflare remote D1/KV storage
+wrangler tail : Stream live real-time JSON execution logs from production Workers
+wrangler secret put <KEY> : Securely upload production secret to Cloudflare Edge vault
+
+# --- Cloudflare D1 (Serverless SQLite) ---
+wrangler d1 create production-db : Provision globally distributed SQLite database on Cloudflare
+wrangler d1 execute production-db --local --command "SELECT count(*) FROM users" : Query local SQLite test database
+wrangler d1 execute production-db --remote --command "SELECT count(*) FROM users" : Execute query on live distributed production database
+wrangler d1 migrations apply production-db --remote : Apply schema migrations to live production database
+
+# --- Cloudflare KV & R2 Storage ---
+wrangler kv:namespace create SESSIONS : Create globally replicated key-value storage
+wrangler kv:key put --binding=SESSIONS "session_123" '{"userId": 42}' : Write key-value pair to KV store
+wrangler kv:key get --binding=SESSIONS "session_123" : Retrieve key value from KV store
+wrangler r2 bucket create user-uploads : Provision zero-egress S3-compatible object storage bucket
+wrangler r2 object put user-uploads/avatar.png --file=./avatar.png : Upload file directly to R2 bucket

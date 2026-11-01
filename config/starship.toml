@@ -1,0 +1,46 @@
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$nodejs\
+$rust\
+$golang\
+$python\
+$docker_context\
+$cmd_duration\
+$line_break\
+$character"""
+
+[directory]
+style = "bold cyan"
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+style = "bold purple"
+symbol = " "
+
+[git_status]
+style = "bold red"
+
+[nodejs]
+symbol = " "
+style = "bold green"
+
+[rust]
+symbol = " "
+style = "bold red"
+
+[golang]
+symbol = " "
+style = "bold cyan"
+
+[python]
+symbol = " "
+style = "bold yellow"
+
+[character]
+success_symbol = "[⚡](bold green)"
+error_symbol = "[✗](bold red)"

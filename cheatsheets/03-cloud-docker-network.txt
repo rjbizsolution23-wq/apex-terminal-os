@@ -1,0 +1,24 @@
+# ☁️ CLOUD, DOCKER, NETWORKING & TUNNELS
+
+# --- Cloudflare Zero Trust & Portless Tunnels ---
+cloudflared tunnel --url http://localhost:3000 : Instantly expose local web app with live global HTTPS URL
+cloudflared tunnel --url http://localhost:8000 : Expose local API server with zero port-forwarding
+cloudflared tunnel run <tunnel-name> : Run persistent production named tunnel from config
+
+# --- Docker & Container Microservices ---
+docker run -d --rm --name redis -p 6379:6379 redis:alpine : Spin up temporary Redis in RAM
+docker run -d --rm --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-alpine : Instant Postgres 16 database
+docker run -d --rm -p 8080:80 -v $(pwd):/usr/share/nginx/html:ro nginx:alpine : Instant Nginx static web server
+docker compose up -d : Boot multi-container production stack in background
+docker compose down -v : Tear down stack and remove all local volumes
+docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" : Clean formatted running container list
+docker system prune -af --volumes : Full nuclear purge of unused Docker images, build cache, and dead volumes
+docker exec -it <container> /bin/sh : Jump into interactive shell inside running container
+
+# --- Networking, DNS & Speed ---
+curl -s https://icanhazip.com : Display your public IP address
+curl -I https://example.com : Inspect HTTP response headers and status codes
+gping 1.1.1.1 : Graphical live ping latency visualizer in terminal
+lsof -i :3000 : Find exactly what process is blocking port 3000
+kill -9 $(lsof -t -i:3000) : Force kill whatever process is using port 3000
+nc -zv 127.0.0.1 5432 : Check if local port/service is open and listening

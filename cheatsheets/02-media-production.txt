@@ -1,0 +1,24 @@
+# 🎬 MEDIA, VIDEO, AUDIO & STREAMING (FFMPEG & YT-DLP)
+
+# --- YouTube & Web Media Ingestion (yt-dlp) ---
+yt-dlp -x --audio-format mp3 --audio-quality 0 "<url>" : Download highest quality MP3 audio from any video
+yt-dlp -f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --merge-output-format mp4 "<url>" : Download cleanest 1080p/4K MP4 with merged AAC audio
+yt-dlp --write-auto-sub --sub-lang en --skip-download "<url>" : Extract auto-generated English subtitles (.vtt)
+yt-dlp --list-formats "<url>" : List every available stream resolution, codec, and bitrate
+yt-dlp --playlist-start 1 --playlist-end 10 "<url>" : Download first 10 items of a playlist
+yt-dlp --download-archive history.txt "<url>" : Download entire channel, skip already downloaded videos
+
+# --- Video Processing & Transcoding (ffmpeg) ---
+ffmpeg -i input.mov -vcodec libx264 -crf 23 -preset fast -acodec aac output.mp4 : Fast high-efficiency H.264 web compression
+ffmpeg -i input.mp4 -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920" -c:a copy short.mp4 : Convert horizontal 16:9 video into 9:16 vertical TikTok/Short
+ffmpeg -ss 00:00:30 -to 00:01:30 -i input.mp4 -c copy clip.mp4 : Cut exact 60-second clip without re-encoding (instant)
+ffmpeg -i input.mp4 -vn -acodec libmp3lame -q:a 2 audio.mp3 : Strip video and extract high quality MP3
+ffmpeg -i input.mp4 -filter:v "setpts=0.5*PTS" -filter:a "atempo=2.0" fast.mp4 : Double the speed of video and audio
+ffmpeg -i video.mp4 -vf "fps=15,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" out.gif : High-definition GIF generation
+ffmpeg -f concat -safe 0 -i list.txt -c copy merged.mp4 : Losslessly join multiple clips together
+
+# --- Image Processing & Optimization (libvips & imagemagick) ---
+magick convert input.jpg -resize 1920x1080^ -gravity center -extent 1920x1080 banner.jpg : Crop and scale image to exact 1080p canvas
+magick mogrify -format webp -quality 85 *.png : Batch convert all PNGs to compressed modern WebP
+vips thumbnail input.jpg thumb.webp 500 : Ultra-fast thumbnail generation using libvips
+exiftool -all= photo.jpg : Strip all GPS coordinates, camera models, and private EXIF metadata

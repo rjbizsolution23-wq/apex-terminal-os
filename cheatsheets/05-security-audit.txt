@@ -1,0 +1,15 @@
+# 🛡️ SECURITY, APPSEC, AUDITING & REVERSE ENGINEERING
+
+# --- Vulnerability Auditing & Scanning ---
+nuclei -u https://target.com -tags cve,auth,exposure : Run targeted CVE & security exposure scans against target
+sqlmap -u "https://target.com/api?id=1" --batch --dbs : Automated SQL injection detection and database enum
+masscan -p1-10000 192.168.1.0/24 --rate=1000 : Ultra-fast subnet port sweep
+nmap -sV -sC -p 22,80,443,8080 target.com : Deep service version detection and standard vulnerability scripts
+
+# --- Binary Analysis & Reverse Engineering ---
+radare2 -A /path/to/binary : Auto-analyze binary disassembly in terminal
+binwalk -e firmware.bin : Scan firmware image and extract compressed internal filesystems
+yara rules.yar /path/to/scan/ : Scan folder against custom malware signature detection rules
+strings /path/to/binary | grep -i "http" : Extract hardcoded URLs and plaintext credentials from compiled binary
+otool -L /path/to/macho_binary : Inspect dynamic library dependencies of macOS Mach-O executable
+codesign -dvvv /Applications/Target.app : Check Apple code signing, entitlements, and certificates
