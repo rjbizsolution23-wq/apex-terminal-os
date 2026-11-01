@@ -1,0 +1,42 @@
+# 🤖 OPEN-SOURCE AI CODING AGENTS, LITELLM ROUTING, RAG, MCP & HARDENED SECOPS
+
+# --- AI Coding Agents (OpenCode, Aider, Codex, Gemini, Qwen, Open Interpreter) ---
+npx opencode-ai@latest : Launch OpenCode TUI (#1 open-source provider-agnostic terminal coding agent)
+OPENAI_API_BASE="https://api.venice.ai/api/v1" OPENAI_API_KEY="$VENICE_API_KEY" aider --model openai/zai-org-glm-5-2 : Run Aider Git-Native Pair Programmer wired to Venice GLM 5.2
+OPENAI_API_BASE="https://api.venice.ai/api/v1" OPENAI_API_KEY="$VENICE_API_KEY" aider --model openai/abliteration-abliterated-model-large-v2 : Run Aider with Obliterated Zero-Refusal Model
+npx @openai/codex --full-auto : Launch OpenAI Codex CLI Agent in Full-Auto Sandbox Mode
+npx @google/gemini-cli : Launch Google Gemini CLI Agent (Generous Free Tier Failover)
+npx @qwen-code/qwen-code : Launch Qwen Code Terminal Agent
+interpreter --api_base "https://api.venice.ai/api/v1" --api_key "$VENICE_API_KEY" --model "openai/zai-org-glm-5-2" : Run Open Interpreter Local Execution Agent with Venice Backend
+
+# --- Universal Neural Gateway, LiteLLM, Local Ollama ($0) & Corpus RAG ---
+litellm --config ~/.config/arsenal/litellm_config.yaml --port 4000 : Start LiteLLM Universal Proxy (Venice + Ollama + OpenRouter + GLM on :4000)
+curl -s http://localhost:11434/v1/chat/completions -H "Content-Type: application/json" -d '{"model":"llama3.2","messages":[{"role":"user","content":"status check"}]}' : Query Local Ollama $0 Zero-Cost OpenAI-Compatible Endpoint
+apex-rag index : Re-index all 10 Cheatsheets + MASTER_COMMANDS.md into SQLite RAG Corpus
+apex-rag search "cloudflare tunnel" : Semantic/BM25 search over the 500+ command corpus with file + line receipts
+apex-rag ask "how do I expose a local port with cloudflare tunnel" : Ask Apex RAG Corpus + Persistent Memory and synthesize answer
+apex-rag remember "Preferred stack: Cloudflare Workers + Hono + D1 + Stripe" : Store persistent cross-session fact in Apex Agent Memory (mem0-style SQLite)
+apex-rag memories : List all stored cross-session agent memories
+
+# --- Model Context Protocol (MCP) Server ---
+apex-mcp : Start Apex Terminal OS as a Model Context Protocol (MCP) JSON-RPC 2.0 Server
+apex-mcp --install-claude : Auto-register Apex MCP Server into Claude Desktop & Cursor mcp.json
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | apex-mcp : Inspect all exposed Apex MCP Tools JSON schema
+
+# --- Terminal UX, Zellij 3-Pane OS Layout, Atuin & Yazi ---
+zellij --layout ~/.config/arsenal/apex-layout.kdl : Launch Zellij 3-Pane "Apex OS Layout" (Neural Router + FZF Arsenal + Live Canvas)
+atuin search --interactive : Search full-text SQLite shell history with Atuin
+yazi : Launch Yazi blazing-fast TUI file manager with image preview
+lazygit : Launch LazyGit interactive TUI Git client
+
+# --- Hardened macOS Apple Seatbelt Sandbox & Security Extensions ---
+sandbox-exec -f ~/.config/arsenal/apex-seatbelt.sb python3 script.py : Run untrusted script inside macOS Apple Seatbelt (sandbox-exec) isolation
+colima start --cpu 4 --memory 8 : Start ephemeral Colima Docker runtime for isolated container execution
+semgrep scan --config=auto . : Run Semgrep SAST static code security audit on current repository
+trivy fs --scanners vuln,secret,misconfig . : Run Trivy vulnerability, secret & misconfig scanner on filesystem
+feroxbuster -u https://example.com : Run Feroxbuster fast recursive web content discovery
+mitmproxy -p 8080 : Launch Mitmproxy interactive HTTPS traffic interceptor
+
+# --- Self-Hosted Keygen License Server & Turnkey White-Label Monetization ---
+apex-keygen-server --port 7798 : Start self-hosted Keygen/Polar license activation & Stripe webhook server (:7798)
+apex-whitelabel --wizard : Launch turnkey White-Label & Stripe Monetization Wizard (rebrand + create Stripe links)

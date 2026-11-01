@@ -57,10 +57,13 @@ def build_all():
 
     shutil.copy2(REPO_ROOT / "bin/apex", dev_dir / "bin/apex")
     shutil.copy2(REPO_ROOT / "bin/venice", dev_dir / "bin/venice")
+    shutil.copy2(REPO_ROOT / "bin/apex-rag", dev_dir / "bin/apex-rag")
     for sheet in sorted((REPO_ROOT / "cheatsheets").glob("0[1-8]-*.txt")):
         shutil.copy2(sheet, dev_dir / "cheatsheets" / sheet.name)
     shutil.copy2(REPO_ROOT / "config/.zshrc_apex", dev_dir / "config/.zshrc_apex")
     shutil.copy2(REPO_ROOT / "config/starship.toml", dev_dir / "config/starship.toml")
+    shutil.copy2(REPO_ROOT / "config/apex-seatbelt.sb", dev_dir / "config/apex-seatbelt.sb")
+    shutil.copy2(REPO_ROOT / "config/apex-layout.kdl", dev_dir / "config/apex-layout.kdl")
     shutil.copy2(REPO_ROOT / "install/setup.sh", dev_dir / "install/setup.sh")
     shutil.copy2(REPO_ROOT / "README.md", dev_dir / "README.md")
     shutil.copy2(REPO_ROOT / "MASTER_COMMANDS.md", dev_dir / "MASTER_COMMANDS.md")
@@ -84,7 +87,10 @@ def build_all():
     sov_dir = DIST_DIR / "sovereign-pro"
     shutil.copytree(dev_dir, sov_dir)
     (sov_dir / "LICENSE-DEVELOPER.md").unlink()
+    shutil.copy2(REPO_ROOT / "bin/apex-mcp", sov_dir / "bin/apex-mcp")
+    shutil.copy2(REPO_ROOT / "config/litellm_config.yaml", sov_dir / "config/litellm_config.yaml")
     shutil.copy2(REPO_ROOT / "cheatsheets/09-venice-uncensored.txt", sov_dir / "cheatsheets/09-venice-uncensored.txt")
+    shutil.copy2(REPO_ROOT / "cheatsheets/10-open-source-ai-agents.txt", sov_dir / "cheatsheets/10-open-source-ai-agents.txt")
 
     (sov_dir / "LICENSE-SOVEREIGN-PRO.md").write_text("""# 🏛️ APEX TERMINAL OS v2.0 — SOVEREIGN FULL-SPECTRUM PRO LICENSE ($497)
 **Issued by:** RJ Business Solutions (Rick Jefferson, CEO)  
@@ -108,11 +114,12 @@ def build_all():
     (ent_dir / "LICENSE-SOVEREIGN-PRO.md").unlink()
     shutil.copy2(REPO_ROOT / "bin/apex-whitelabel", ent_dir / "bin/apex-whitelabel")
     shutil.copy2(REPO_ROOT / "bin/apex-fulfill", ent_dir / "bin/apex-fulfill")
+    shutil.copy2(REPO_ROOT / "bin/apex-keygen-server", ent_dir / "bin/apex-keygen-server")
     (ent_dir / "enterprise").mkdir(parents=True, exist_ok=True)
     (ent_dir / "landing").mkdir(parents=True, exist_ok=True)
     shutil.copy2(REPO_ROOT / "landing/index.html", ent_dir / "landing/index.html")
 
-    (ent_dir / "cheatsheets/10-enterprise-sop.txt").write_text("""# 🏛️ ENTERPRISE FLEET & WHITE-LABEL OPERATIONS
+    (ent_dir / "cheatsheets/11-enterprise-sop.txt").write_text("""# 🏛️ ENTERPRISE FLEET & WHITE-LABEL OPERATIONS
 
 # --- White-Label Custom Branding ---
 apex-whitelabel --brand "YOUR AGENCY NAME" --tagline "Autonomous Engineering OS" : Custom brand the 12-Ability Startup Command Center

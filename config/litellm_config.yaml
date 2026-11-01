@@ -1,0 +1,72 @@
+# ==============================================================================
+# 🏛️ APEX TERMINAL OS — LITELLM UNIVERSAL MULTI-PROVIDER ROUTER CONFIG
+# Engineered for Rick Jefferson | RJ Business Solutions
+# Unifies Venice AI (9 Uncensored/Frontier models), Z.ai GLM, OpenRouter Free Tier,
+# and Local Ollama ($0 offline tier) behind one OpenAI-compatible gateway (:4000)
+# ==============================================================================
+
+model_list:
+  # --- TIER 1: VENICE SOVEREIGN UNCENSORED & OBLITERATED MATRIX ---
+  - model_name: apex-abliterated
+    litellm_params:
+      model: openai/abliteration-abliterated-model-large-v2
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: apex-frontier
+    litellm_params:
+      model: openai/zai-org-glm-5-2
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: apex-heretic
+    litellm_params:
+      model: openai/qwen3-5-9b-heretic
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: apex-roleplay
+    litellm_params:
+      model: openai/arliai-qwq-32b-rpr-v1
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: apex-uncensored
+    litellm_params:
+      model: openai/venice-uncensored
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: apex-cheap
+    litellm_params:
+      model: openai/google-gemma-3-27b-it
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  # --- TIER 2: SOVEREIGN CLOUD FAILOVER (Z.AI GLM + OPENROUTER FREE) ---
+  - model_name: apex-failover-glm
+    litellm_params:
+      model: openai/glm-4.5-flash
+      api_base: https://open.bigmodel.cn/api/paas/v4
+      api_key: os.environ/Z_AI_API_KEY
+
+  - model_name: apex-failover-openrouter
+    litellm_params:
+      model: openrouter/google/gemma-4-31b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # --- TIER 3: $0 ZERO-COST LOCAL INFERENCE (OLLAMA / LLAMA.CPP) ---
+  - model_name: apex-local-zero
+    litellm_params:
+      model: openai/llama3.2
+      api_base: http://localhost:11434/v1
+      api_key: ollama
+
+router_settings:
+  routing_strategy: latency-based-routing
+  num_retries: 2
+  timeout: 60
+  fallbacks:
+    - {"apex-frontier": ["apex-failover-glm", "apex-failover-openrouter", "apex-local-zero"]}
+    - {"apex-uncensored": ["apex-failover-glm", "apex-failover-openrouter", "apex-local-zero"]}
+    - {"apex-abliterated": ["apex-uncensored", "apex-failover-glm", "apex-local-zero"]}

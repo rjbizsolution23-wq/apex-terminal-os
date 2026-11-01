@@ -236,8 +236,11 @@ def stream_chat(route_key: str, prompt: str, custom_system: str = None) -> str:
     endpoints = [
         ("Venice Primary", f"{BASE_URL}/chat/completions", API_KEY, model_id),
         ("Sovereign GLM Failover", ZAI_FAILOVER_URL, ZAI_FAILOVER_KEY, "glm-4.5-flash"),
-        ("OpenRouter Sovereign Failover", OR_FAILOVER_URL, OR_FAILOVER_KEY, "google/gemma-4-31b-it:free")
+        ("OpenRouter Sovereign Failover", OR_FAILOVER_URL, OR_FAILOVER_KEY, "google/gemma-4-31b-it:free"),
+        ("Local Ollama $0 Failover", "http://localhost:11434/v1/chat/completions", "ollama", os.environ.get("OLLAMA_MODEL", "llama3.2"))
     ]
+    if os.environ.get("LITELLM_PROXY_URL"):
+        endpoints.insert(0, ("LiteLLM Universal Gateway", f"{os.environ['LITELLM_PROXY_URL'].rstrip('/')}/chat/completions", os.environ.get("LITELLM_API_KEY", API_KEY), f"apex-{route_key}"))
 
     full_response = []
     for label, url, key, target_model in endpoints:
@@ -710,6 +713,9 @@ def print_command_center_banner():
     print("\033[1;36m║\033[0m  \033[1;32m[11]\033[0m 🌐 \033[1;37mInstant Cloudflare Tunnel\033[0m     (Expose any local port publicly)     \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[12]\033[0m 🎬 \033[1;37mMedia Downloader (4K / MP3)\033[0m   (Download YouTube/Web video/audio)   \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[13]\033[0m 💰 \033[1;37mWhite-Label & Stripe Monetize\033[0m (Add your Logo, Brand & Stripe Keys) \033[1;36m║\033[0m")
+    print("\033[1;36m║\033[0m  \033[1;32m[14]\033[0m 📚 \033[1;37mRAG Corpus & Persistent Memory\033[0m(Ask 500+ command docs + mem0 SQLite)\033[1;36m║\033[0m")
+    print("\033[1;36m║\033[0m  \033[1;32m[15]\033[0m 🔌 \033[1;37mModel Context Protocol (MCP)\033[0m  (Register/Run Apex MCP Server)       \033[1;36m║\033[0m")
+    print("\033[1;36m║\033[0m  \033[1;32m[16]\033[0m 🖥️  \033[1;37mCoding Agents & Zellij Layout\033[0m (OpenCode, Aider+Venice, Zellij OS)  \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;33m[0 / ENTER]\033[0m 💻 \033[0;37mDrop straight to normal Zsh terminal prompt (Type `m` anytime)\033[0m \033[1;36m║\033[0m")
     print("\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m")
 
@@ -717,7 +723,7 @@ def interactive_menu(loop_forever: bool = True):
     while True:
         print_command_center_banner()
         try:
-            choice = input("\033[1;32m⚡ Pick Ability [1-13], press ENTER for Shell, or type any request > \033[0m").strip()
+            choice = input("\033[1;32m⚡ Pick Ability [1-16], press ENTER for Shell, or type any request > \033[0m").strip()
         except (KeyboardInterrupt, EOFError):
             print("")
             break
@@ -782,6 +788,52 @@ def interactive_menu(loop_forever: bool = True):
             if not wl_bin.exists():
                 wl_bin = Path(__file__).resolve().parent / "apex-whitelabel"
             subprocess.run([sys.executable, str(wl_bin), "--wizard"])
+        elif choice == "14":
+            rag_bin = Path.home() / ".local/bin/apex-rag"
+            if not rag_bin.exists():
+                rag_bin = Path(__file__).resolve().parent / "apex-rag"
+            sub = input("\033[1;36m📚 [1] Ask Corpus RAG  [2] Search Commands  [3] Remember Fact  [4] View Memories > \033[0m").strip() or "1"
+            if sub == "1":
+                q = input("Question for Apex Corpus RAG > ").strip()
+                if q:
+                    subprocess.run([sys.executable, str(rag_bin), "ask", q])
+            elif sub == "2":
+                q = input("Search 500+ Command Corpus > ").strip()
+                if q:
+                    subprocess.run([sys.executable, str(rag_bin), "search", q])
+            elif sub == "3":
+                f = input("Fact/Preference to Remember Across Sessions > ").strip()
+                if f:
+                    subprocess.run([sys.executable, str(rag_bin), "remember", f])
+            elif sub == "4":
+                subprocess.run([sys.executable, str(rag_bin), "memories"])
+        elif choice == "15":
+            mcp_bin = Path.home() / ".local/bin/apex-mcp"
+            if not mcp_bin.exists():
+                mcp_bin = Path(__file__).resolve().parent / "apex-mcp"
+            subprocess.run([sys.executable, str(mcp_bin), "--install-claude"])
+        elif choice == "16":
+            print("\n\033[1;36m🖥️  OPEN-SOURCE CODING AGENTS & WORKSPACE LAUNCHER\033[0m")
+            print("  [1] Launch OpenCode TUI (npx opencode-ai@latest)")
+            print("  [2] Launch Aider wired to Venice GLM 5.2")
+            print("  [3] Launch Zellij 3-Pane 'Apex OS Layout'")
+            print("  [4] Start Self-Hosted Keygen License Server (:7798)")
+            ag = input("Select [1-4] > ").strip()
+            if ag == "1":
+                subprocess.run(["npx", "opencode-ai@latest"])
+            elif ag == "2":
+                env_copy = os.environ.copy()
+                env_copy["OPENAI_API_BASE"] = f"{BASE_URL}"
+                env_copy["OPENAI_API_KEY"] = API_KEY
+                subprocess.run(["aider", "--model", "openai/zai-org-glm-5-2"], env=env_copy)
+            elif ag == "3":
+                layout = Path.home() / ".config/arsenal/apex-layout.kdl"
+                subprocess.run(["zellij", "--layout", str(layout)])
+            elif ag == "4":
+                kg_bin = Path.home() / ".local/bin/apex-keygen-server"
+                if not kg_bin.exists():
+                    kg_bin = Path(__file__).resolve().parent / "apex-keygen-server"
+                subprocess.run([sys.executable, str(kg_bin)])
         else:
             # User typed natural language directly into the menu prompt!
             execute_request(choice)

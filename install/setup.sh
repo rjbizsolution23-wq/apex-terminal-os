@@ -47,22 +47,23 @@ mkdir -p "$HOME/.config/arsenal/cheatsheets"
 mkdir -p "$HOME/.config"
 mkdir -p "$HOME/.apex-workspace"/{sandboxes,canvas,scripts,forge}
 
-# Copy latest cheatsheets into user config
+# Copy latest cheatsheets and layouts into user config
 cp -r "$REPO_DIR/cheatsheets/"* "$HOME/.config/arsenal/cheatsheets/"
+cp -r "$REPO_DIR/config/apex-layout.kdl" "$HOME/.config/arsenal/apex-layout.kdl" 2>/dev/null || true
+cp -r "$REPO_DIR/config/apex-seatbelt.sb" "$HOME/.config/arsenal/apex-seatbelt.sb" 2>/dev/null || true
+cp -r "$REPO_DIR/config/litellm_config.yaml" "$HOME/.config/arsenal/litellm_config.yaml" 2>/dev/null || true
 
-# Install core binaries (apex + venice sovereign OS + whitelabel & fulfillment tools)
+# Install core binaries (apex + venice sovereign OS + RAG + MCP + Keygen + Whitelabel)
 cp "$REPO_DIR/bin/apex" "$HOME/.local/bin/apex"
 cp "$REPO_DIR/bin/venice" "$HOME/.local/bin/venice"
 chmod +x "$HOME/.local/bin/apex" "$HOME/.local/bin/venice"
-if [ -f "$REPO_DIR/bin/apex-whitelabel" ]; then
-    cp "$REPO_DIR/bin/apex-whitelabel" "$HOME/.local/bin/apex-whitelabel"
-    chmod +x "$HOME/.local/bin/apex-whitelabel"
-    ln -sf "$HOME/.local/bin/apex-whitelabel" "$HOME/.local/bin/apex-monetize"
-fi
-if [ -f "$REPO_DIR/bin/apex-fulfill" ]; then
-    cp "$REPO_DIR/bin/apex-fulfill" "$HOME/.local/bin/apex-fulfill"
-    chmod +x "$HOME/.local/bin/apex-fulfill"
-fi
+for extra_bin in apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
+    if [ -f "$REPO_DIR/bin/$extra_bin" ]; then
+        cp "$REPO_DIR/bin/$extra_bin" "$HOME/.local/bin/$extra_bin"
+        chmod +x "$HOME/.local/bin/$extra_bin"
+    fi
+done
+ln -sf "$HOME/.local/bin/apex-whitelabel" "$HOME/.local/bin/apex-monetize" 2>/dev/null || true
 
 # Create all sovereign execution symlinks
 SYMLINKS=(

@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""
+🏛️ APEX TERMINAL OS — MODEL CONTEXT PROTOCOL (MCP) JSON-RPC 2.0 SERVER
+Engineered for Rick Jefferson | RJ Business Solutions
+
+Exposes the entire Apex Terminal OS (500+ Command Arsenal RAG, 9-Model Venice Neural Router,
+Hardened Apple Seatbelt Sandbox, and Persistent SQLite Agent Memory) as standard MCP Tools
+callable by Claude Desktop, OpenCode, Cursor, Windsurf, and any MCP client.
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPT_PATH = Path(__file__).resolve()
+REPO_ROOT = SCRIPT_PATH.parent.parent
+RAG_BIN = SCRIPT_PATH.parent / "apex-rag"
+VENICE_BIN = SCRIPT_PATH.parent / "venice"
+SEATBELT_PROFILE = REPO_ROOT / "config" / "apex-seatbelt.sb"
+
+MCP_TOOLS = [
+    {
+        "name": "apex_search_arsenal",
+        "description": "Search the 500+ command Apex Terminal OS cheatsheets and MASTER_COMMANDS.md corpus with exact file and line citations.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query (e.g. 'cloudflare tunnel', 'ghidra', 'stripe', 'ffmpeg')"}
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "apex_neural_route",
+        "description": "Route a natural-language prompt through the 9-Model Venice Uncensored/Obliterated/Frontier Neural Auto-Router with automatic failover.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Prompt to route and execute"},
+                "mode": {
+                    "type": "string",
+                    "description": "Optional forced model key: abliterated, frontier, heretic, roleplay, uncensored, cheap",
+                },
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "apex_sandbox_exec",
+        "description": "Execute a Python or Bash snippet inside an isolated ~/.apex-workspace/sandboxes directory (hardened with macOS Apple Seatbelt sandbox-exec).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "Source code to execute"},
+                "language": {"type": "string", "enum": ["python", "bash"], "default": "python"},
+            },
+            "required": ["code"],
+        },
+    },
+    {
+        "name": "apex_memory_remember",
+        "description": "Persist an episodic or semantic fact across sessions in the Apex SQLite Agent Memory database (~/.apex-workspace/memory.db).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "fact": {"type": "string", "description": "Fact, preference, or architectural note to store"}
+            },
+            "required": ["fact"],
+        },
+    },
+    {
+        "name": "apex_memory_recall",
+        "description": "Recall stored cross-session memories from the Apex SQLite Agent Memory database.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional keyword filter"}
+            },
+        },
+    },
+]
+
+
+def handle_tool_call(name: str, arguments: dict) -> str:
+    if name == "apex_search_arsenal":
+        q = arguments.get("query", "")
+        res = subprocess.run([sys.executable, str(RAG_BIN), "search", q], capture_output=True, text=True, timeout=15)
+        return res.stdout or res.stderr
+
+    if name == "apex_neural_route":
+        prompt = arguments.get("prompt", "")
+        mode = arguments.get("mode", "")
+        cmd = [sys.executable, str(VENICE_BIN)]
+        if mode:
+            cmd.append(f"--{mode}")
+        cmd.append(prompt)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        return (res.stderr + "\n" + res.stdout).strip()
+
+    if name == "apex_sandbox_exec":
+        code = arguments.get("code", "")
+        lang = arguments.get("language", "python")
+        sbox = Path.home() / ".apex-workspace" / "sandboxes" / "mcp_exec"
+        sbox.mkdir(parents=True, exist_ok=True)
+        ext = "py" if lang == "python" else "sh"
+        target = sbox / f"run.{ext}"
+        target.write_text(code, encoding="utf-8")
+        target.chmod(0o755)
+        runner = [sys.executable, str(target)] if lang == "python" else ["/bin/zsh", str(target)]
+        if SEATBELT_PROFILE.exists() and Path("/usr/bin/sandbox-exec").exists():
+            runner = ["/usr/bin/sandbox-exec", "-f", str(SEATBELT_PROFILE)] + runner
+        res = subprocess.run(runner, cwd=str(sbox), capture_output=True, text=True, timeout=30)
+        return f"Exit Code: {res.returncode}\nStdout:\n{res.stdout}\nStderr:\n{res.stderr}"
+
+    if name == "apex_memory_remember":
+        fact = arguments.get("fact", "")
+        res = subprocess.run([sys.executable, str(RAG_BIN), "remember", fact], capture_output=True, text=True, timeout=10)
+        return res.stdout.strip()
+
+    if name == "apex_memory_recall":
+        q = arguments.get("query", "")
+        cmd = [sys.executable, str(RAG_BIN), "memories"] + ([q] if q else [])
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        return res.stdout.strip()
+
+    return f"Unknown tool: {name}"
+
+
+def install_mcp_configs() -> None:
+    targets = [
+        Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json",
+        Path.home() / ".cursor" / "mcp.json",
+    ]
+    mcp_bin = str(Path.home() / ".local" / "bin" / "apex-mcp")
+    for cfg_path in targets:
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+        if cfg_path.exists():
+            try:
+                data = json.loads(cfg_path.read_text(encoding="utf-8"))
+            except Exception:
+                data = {}
+        data.setdefault("mcpServers", {})
+        data["mcpServers"]["apex-terminal-os"] = {
+            "command": "python3",
+            "args": [mcp_bin],
+        }
+        cfg_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        print(f"\033[1;32m✓ Registered apex-terminal-os MCP Server in:\033[0m {cfg_path}")
+
+
+def main() -> None:
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--install-claude":
+            install_mcp_configs()
+            return
+        if sys.argv[1] in ("-h", "--help"):
+            print("""\033[1;36m🏛️ APEX TERMINAL OS — MODEL CONTEXT PROTOCOL (MCP) SERVER\033[0m
+Usage:
+  apex-mcp                   -> Run JSON-RPC 2.0 MCP Server over stdio
+  apex-mcp --install-claude  -> Auto-register in Claude Desktop & Cursor mcp.json
+""")
+            return
+
+    for raw_line in sys.stdin:
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except Exception:
+            continue
+
+        req_id = msg.get("id")
+        method = msg.get("method", "")
+        params = msg.get("params") or {}
+
+        if method == "initialize":
+            resp = {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "apex-terminal-os-mcp", "version": "3.0.0"},
+                },
+            }
+            sys.stdout.write(json.dumps(resp) + "\n")
+            sys.stdout.flush()
+        elif method == "tools/list":
+            resp = {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {"tools": MCP_TOOLS},
+            }
+            sys.stdout.write(json.dumps(resp) + "\n")
+            sys.stdout.flush()
+        elif method == "tools/call":
+            t_name = params.get("name", "")
+            t_args = params.get("arguments") or {}
+            out_text = handle_tool_call(t_name, t_args)
+            resp = {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": out_text}],
+                    "isError": False,
+                },
+            }
+            sys.stdout.write(json.dumps(resp) + "\n")
+            sys.stdout.flush()
+        elif req_id is not None:
+            resp = {"jsonrpc": "2.0", "id": req_id, "result": {}}
+            sys.stdout.write(json.dumps(resp) + "\n")
+            sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()

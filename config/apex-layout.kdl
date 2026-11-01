@@ -1,0 +1,33 @@
+// ==============================================================================
+// 🏛️ APEX TERMINAL OS — ZELLIJ 3-PANE SOVEREIGN WORKSPACE LAYOUT
+// Launch with: zellij --layout ~/.config/arsenal/apex-layout.kdl
+// ==============================================================================
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="🏛️ APEX SOVEREIGN COMMAND CENTER" focus=true {
+        pane split_direction="vertical" {
+            pane name="🧠 Venice Neural Router & Startup Menu (m)" size="55%" focus=true {
+                command "zsh"
+                args "-i" "-c" "venice --menu; exec zsh"
+            }
+            pane split_direction="horizontal" size="45%" {
+                pane name="🚀 500+ Command FZF Arsenal (apex)" size="50%" {
+                    command "zsh"
+                    args "-i" "-c" "echo 'Type apex to search 500+ commands or apex-rag ask <query>'; exec zsh"
+                }
+                pane name="🎨 Live Canvas & MCP Telemetry (:7799)" size="50%" {
+                    command "zsh"
+                    args "-i" "-c" "ls -la ~/.apex-workspace/; exec zsh"
+                }
+            }
+        }
+    }
+}

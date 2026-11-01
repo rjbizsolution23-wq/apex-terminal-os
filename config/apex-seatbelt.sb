@@ -1,0 +1,30 @@
+;; ==============================================================================
+;; 🏛️ APEX TERMINAL OS — MACOS APPLE SEATBELT (sandbox-exec) HARDENED PROFILE
+;; Restricts untrusted scripts in ~/.apex-workspace/sandboxes from modifying
+;; host system files, SSH keys, or root directories while permitting execution.
+;; ==============================================================================
+(version 1)
+(allow default)
+
+;; Deny writes to sensitive user & system credential paths
+(deny file-write*
+  (subpath "/System")
+  (subpath "/Library")
+  (subpath "/usr")
+  (subpath "/bin")
+  (subpath "/sbin")
+  (regex #"^/Users/[^/]+/\.ssh")
+  (regex #"^/Users/[^/]+/\.aws")
+  (regex #"^/Users/[^/]+/\.gnupg")
+  (regex #"^/Users/[^/]+/\.zshrc")
+)
+
+;; Explicitly allow writes to temporary & Apex Sandbox workspace directories
+(allow file-write*
+  (subpath "/tmp")
+  (subpath "/private/tmp")
+  (subpath "/var/folders")
+  (subpath "/private/var/folders")
+  (regex #"^/Users/[^/]+/\.apex-workspace/sandboxes")
+  (regex #"^/Users/[^/]+/\.apex-workspace/scripts")
+)

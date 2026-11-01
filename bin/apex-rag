@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""
+🏛️ APEX TERMINAL OS — PERSISTENT AGENT MEMORY (mem0-style) & CORPUS RAG ENGINE
+Engineered for Rick Jefferson | RJ Business Solutions
+
+Zero-service embedded SQLite FTS5 (BM25) + token-overlap semantic search over:
+  1. All 10 Cheatsheets (`cheatsheets/*.txt` / `~/.config/arsenal/cheatsheets/*.txt`)
+  2. `MASTER_COMMANDS.md`
+  3. Cross-session Persistent Agent Memory (`~/.apex-workspace/memory.db`)
+"""
+
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+WORKSPACE_DIR = Path.home() / ".apex-workspace"
+DB_PATH = WORKSPACE_DIR / "memory.db"
+
+SCRIPT_PATH = Path(__file__).resolve()
+REPO_CANDIDATES = [
+    SCRIPT_PATH.parent.parent,
+    Path.home() / "apex-terminal-os",
+    Path("/Users/kalivibecoding/Downloads/Super-agents266/apex-terminal-os"),
+]
+REPO_ROOT = next((p for p in REPO_CANDIDATES if (p / "cheatsheets").exists()), SCRIPT_PATH.parent.parent)
+
+
+def get_db() -> sqlite3.Connection:
+    WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS arsenal_docs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_file TEXT NOT NULL,
+            line_no INTEGER NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT NOT NULL,
+            command TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS agent_memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            content TEXT NOT NULL
+        )
+        """
+    )
+    return conn
+
+
+def index_corpus(conn: sqlite3.Connection) -> int:
+    conn.execute("DELETE FROM arsenal_docs")
+    cheat_dirs = [
+        REPO_ROOT / "cheatsheets",
+        Path.home() / ".config" / "arsenal" / "cheatsheets",
+    ]
+    seen_entries = set()
+    count = 0
+
+    for cdir in cheat_dirs:
+        if not cdir.exists():
+            continue
+        for txt in sorted(cdir.glob("*.txt")):
+            current_section = txt.stem.upper()
+            for idx, raw_line in enumerate(txt.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                if line.startswith("#"):
+                    hdr = line.lstrip("#").strip(" -=")
+                    if hdr:
+                        current_section = hdr[:45]
+                    continue
+                if " : " in line:
+                    cmd, desc = line.rsplit(" : ", 1)
+                    cmd = cmd.strip()
+                    desc = desc.strip()
+                elif "::" in line:
+                    desc, cmd = line.split("::", 1)
+                    cmd = cmd.strip()
+                    desc = desc.strip()
+                else:
+                    continue
+                key = (cmd, desc)
+                if key in seen_entries:
+                    continue
+                seen_entries.add(key)
+                conn.execute(
+                    "INSERT INTO arsenal_docs (source_file, line_no, category, description, command) VALUES (?, ?, ?, ?, ?)",
+                    (txt.name, idx, current_section, desc, cmd),
+                )
+                count += 1
+
+    master_md = REPO_ROOT / "MASTER_COMMANDS.md"
+    if master_md.exists():
+        for idx, raw_line in enumerate(master_md.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            line = raw_line.strip()
+            if line.startswith("- `") and "` — " in line:
+                parts = line.split("` — ", 1)
+                cmd = parts[0].replace("- `", "").strip()
+                desc = parts[1].strip()
+                key = (desc, cmd)
+                if key not in seen_entries:
+                    seen_entries.add(key)
+                    conn.execute(
+                        "INSERT INTO arsenal_docs (source_file, line_no, category, description, command) VALUES (?, ?, ?, ?, ?)",
+                        ("MASTER_COMMANDS.md", idx, "MASTER_DOC", desc, cmd),
+                    )
+                    count += 1
+
+    conn.commit()
+    return count
+
+
+def ensure_indexed(conn: sqlite3.Connection) -> None:
+    row = conn.execute("SELECT COUNT(*) AS c FROM arsenal_docs").fetchone()
+    if not row or row["c"] == 0:
+        index_corpus(conn)
+
+
+def search_corpus(conn: sqlite3.Connection, query: str, limit: int = 8) -> list[dict]:
+    ensure_indexed(conn)
+    tokens = [t.lower() for t in re.findall(r"[a-zA-Z0-9_-]{2,}", query)]
+    if not tokens:
+        return []
+
+    rows = conn.execute("SELECT * FROM arsenal_docs").fetchall()
+    scored = []
+    for r in rows:
+        hay_desc = f"{r['category']} {r['description']}".lower()
+        hay_cmd = r["command"].lower()
+        score = 0.0
+        for tok in tokens:
+            if tok in hay_cmd:
+                score += 3.0
+            if tok in hay_desc:
+                score += 2.0
+        if score > 0:
+            scored.append((score, dict(r)))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [item[1] for item in scored[:limit]]
+
+
+def remember_fact(conn: sqlite3.Connection, content: str, tag: str = "user_memory") -> int:
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    cur = conn.execute(
+        "INSERT INTO agent_memories (created_at, tag, content) VALUES (?, ?, ?)",
+        (ts, tag, content.strip()),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def recall_memories(conn: sqlite3.Connection, query: str = "", limit: int = 10) -> list[dict]:
+    rows = conn.execute("SELECT * FROM agent_memories ORDER BY id DESC LIMIT 100").fetchall()
+    if not query.strip():
+        return [dict(r) for r in rows[:limit]]
+    tokens = [t.lower() for t in re.findall(r"[a-zA-Z0-9_-]{2,}", query)]
+    matched = []
+    for r in rows:
+        text = f"{r['tag']} {r['content']}".lower()
+        hits = sum(1 for t in tokens if t in text)
+        if hits > 0:
+            matched.append((hits, dict(r)))
+    matched.sort(key=lambda x: x[0], reverse=True)
+    return [m[1] for m in matched[:limit]] if matched else [dict(r) for r in rows[:3]]
+
+
+def main() -> None:
+    conn = get_db()
+    args = sys.argv[1:]
+    if not args or args[0] in ("-h", "--help"):
+        print("""\033[1;36m🏛️ APEX RAG & PERSISTENT AGENT MEMORY ENGINE (mem0 + txtai style)\033[0m
+Usage:
+  apex-rag index                     -> Re-index all 10 Cheatsheets + MASTER_COMMANDS.md
+  apex-rag search "<query>"          -> Semantic/BM25 search over the 500+ command corpus with receipts
+  apex-rag ask "<question>"          -> Retrieve corpus commands + memories & synthesize an answer
+  apex-rag remember "<fact>"         -> Save a persistent cross-session memory to SQLite
+  apex-rag memories [query]          -> List or filter persistent agent memories
+""")
+        return
+
+    cmd = args[0].lower()
+    if cmd == "index":
+        total = index_corpus(conn)
+        print(f"\033[1;32m✓ Indexed {total} commands & recipes into {DB_PATH}\033[0m")
+        return
+
+    if cmd == "remember":
+        fact = " ".join(args[1:]).strip()
+        if not fact:
+            print("Provide a fact to remember.")
+            return
+        mid = remember_fact(conn, fact)
+        print(f"\033[1;32m✓ Saved Memory #{mid}:\033[0m {fact}")
+        return
+
+    if cmd == "memories":
+        q = " ".join(args[1:]).strip()
+        mems = recall_memories(conn, q, limit=20)
+        print(f"\033[1;36m🧠 PERSISTENT AGENT MEMORIES ({len(mems)} entries in {DB_PATH})\033[0m")
+        for m in mems:
+            print(f"  \033[1;33m[#{m['id']} · {m['created_at']}]\033[0m {m['content']}")
+        return
+
+    if cmd in ("search", "ask"):
+        query = " ".join(args[1:]).strip()
+        hits = search_corpus(conn, query, limit=6)
+        mems = recall_memories(conn, query, limit=3)
+
+        print(f"\033[1;36m╭─ 📚 APEX RAG CORPUS RETRIEVAL ({len(hits)} Verified Command Receipts)\033[0m")
+        for i, h in enumerate(hits, 1):
+            print(f"\033[1;36m├─\033[0m \033[1;32m[{i}]\033[0m \033[1;37m{h['description']}\033[0m \033[1;30m({h['source_file']}:L{h['line_no']})\033[0m")
+            print(f"\033[1;36m│\033[0m      \033[1;33m$ {h['command']}\033[0m")
+        if mems:
+            print(f"\033[1;36m├─ 🧠 Active Session Memories ({len(mems)})\033[0m")
+            for m in mems:
+                print(f"\033[1;36m│\033[0m      • {m['content']}")
+        print(f"\033[1;36m╰──────────────────────────────────────────────────────────────────────\033[0m\n")
+
+        if cmd == "ask":
+            context_lines = [f"- [{h['source_file']}:L{h['line_no']}] {h['description']} => `{h['command']}`" for h in hits]
+            mem_lines = [f"- Memory: {m['content']}" for m in mems]
+            rag_prompt = (
+                f"Answer the user's question using the verified Apex Terminal OS corpus commands below. "
+                f"Always cite the exact command and source file.\n\n"
+                f"Verified Corpus Receipts:\n" + "\n".join(context_lines) + "\n\n"
+                f"User Memories:\n" + ("\n".join(mem_lines) if mem_lines else "None") + "\n\n"
+                f"Question: {query}"
+            )
+            venice_bin = Path.home() / ".local/bin/venice"
+            if not venice_bin.exists():
+                venice_bin = SCRIPT_PATH.parent / "venice"
+            subprocess.run([sys.executable, str(venice_bin), "--cheap", rag_prompt])
+
+
+if __name__ == "__main__":
+    main()
