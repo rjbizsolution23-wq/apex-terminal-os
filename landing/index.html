@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex Terminal OS v2.0 — Sovereign macOS Execution Engine | RJ Business Solutions</title>
+  <meta name="description" content="Transform any MacBook into a Sovereign AI, Full-Stack Engineering, Security & Media Workstation. 12-Ability Startup Menu, 9-Model Uncensored Neural Router, Hermetic Sandbox & Live Canvas." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --rj-blue: #2563eb;
+      --rj-sky: #0ea5e9;
+      --rj-deep: #1e3a8a;
+      --rj-navy: #0f172a;
+      --rj-white: #ffffff;
+      --rj-soft: #f8fafc;
+      --rj-light: #eff6ff;
+      --rj-border: #bfdbfe;
+      --rj-line: #e2e8f0;
+      --rj-text: #0f172a;
+      --rj-muted-text: #475569;
+    }
+
+    body {
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background-color: var(--rj-soft);
+      color: var(--rj-text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4, .font-display {
+      font-family: "Space Grotesk", system-ui, sans-serif;
+    }
+
+    code, pre, .font-mono {
+      font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    .rj-hero-gradient {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+    }
+
+    .rj-btn-gradient {
+      background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+      transition: all 0.2s ease;
+    }
+
+    .rj-btn-gradient:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.45);
+    }
+
+    .rj-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: 9999px;
+    }
+
+    .rj-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .rj-card:hover {
+      border-color: #bfdbfe;
+      box-shadow: 0 12px 30px -8px rgba(37, 99, 235, 0.12);
+    }
+
+    .rj-card-featured {
+      background: #ffffff;
+      border: 2px solid #2563eb;
+      border-radius: 16px;
+      box-shadow: 0 16px 40px -10px rgba(37, 99, 235, 0.18);
+    }
+
+    .terminal-window {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.55);
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+      }
+      .rj-card, .rj-card-featured {
+        break-inside: avoid;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP EXECUTIVE NAVIGATION -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-3.5">
+        <img
+          src="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg"
+          alt="RJ Business Solutions Official Logo"
+          class="w-11 h-11 rounded-lg object-cover border border-blue-200 shadow-sm"
+        />
+        <div>
+          <div class="font-display font-bold text-slate-900 text-lg leading-tight tracking-tight">
+            RJ BUSINESS SOLUTIONS
+          </div>
+          <div class="text-[11px] font-display uppercase tracking-widest text-blue-600 font-bold">
+            Autonomous Enterprise Architecture
+          </div>
+        </div>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+        <a href="#simulator" class="hover:text-blue-600 transition">Interactive Demo</a>
+        <a href="#capabilities" class="hover:text-blue-600 transition">12-Ability Engine</a>
+        <a href="#router" class="hover:text-blue-600 transition">9-Model Neural Router</a>
+        <a href="#comparison" class="hover:text-blue-600 transition">ROI Matrix</a>
+        <a href="#pricing" class="hover:text-blue-600 transition">Licensing</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <a
+          href="https://github.com/rjbizsolution23-wq/apex-terminal-os"
+          target="_blank"
+          rel="noopener"
+          class="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:text-blue-600 text-xs font-semibold transition"
+        >
+          <span>GitHub Repo</span>
+          <span>↗</span>
+        </a>
+        <a
+          href="#pricing"
+          class="rj-btn-gradient text-white font-display font-bold text-xs sm:text-sm px-5 py-2.5 rounded-lg shadow-sm"
+        >
+          Get Instant License →
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- DARK HERO HEADER -->
+  <section class="rj-hero-gradient text-white pt-16 pb-20 lg:pt-20 lg:pb-24 border-b border-blue-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Top Metadata Strip -->
+      <div class="flex flex-wrap items-center justify-between gap-4 pb-8 mb-10 border-b border-white/15">
+        <div class="flex items-center gap-3">
+          <span class="px-3 py-1 rounded-full bg-blue-500/20 border border-blue-300/30 text-sky-300 font-display text-xs font-bold uppercase tracking-wider">
+            PRODUCT RELEASE v2.0
+          </span>
+          <span class="text-xs text-slate-300 font-mono">
+            DOC-ID: RJ-APEX-OS-2026 · APPLE SILICON &amp; MACOS NATIVE
+          </span>
+        </div>
+        <div class="text-xs text-slate-300">
+          Lead Architect: <strong class="text-white">Rick Jefferson, CEO</strong> · RJ Business Solutions
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <!-- Hero Left Copy -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-sky-200 text-xs font-semibold">
+            <span>⚡</span>
+            <span>Zero-Refusal Neural Routing · Self-Healing Sandbox · Live Canvas</span>
+          </div>
+
+          <h1 class="font-display text-4xl sm:text-5xl lg:text-[54px] font-bold tracking-tight leading-[1.08]">
+            Turn Your Mac Terminal Into an <span class="text-sky-300">Autonomous Software &amp; AI Factory.</span>
+          </h1>
+
+          <p class="text-slate-200 text-base sm:text-lg leading-relaxed max-w-xl">
+            Stop memorizing complex flags, hitting AI refusal walls, or wiring environments by hand. <strong>Apex Terminal OS v2.0</strong> boots a <strong>12-Ability Numbered Command Center</strong> on every terminal launch—routing plain English to 9 uncensored &amp; frontier models, executing self-healing scripts in hermetic sandboxes, and launching live interactive web apps in seconds.
+          </p>
+
+          <!-- Key Metrics Strip -->
+          <div class="grid grid-cols-3 gap-4 pt-2">
+            <div class="bg-white/10 border border-white/15 rounded-xl p-3.5">
+              <div class="font-display text-2xl sm:text-3xl font-bold text-white">12</div>
+              <div class="text-xs text-slate-300 mt-0.5">Numbered Startup Abilities</div>
+            </div>
+            <div class="bg-white/10 border border-white/15 rounded-xl p-3.5">
+              <div class="font-display text-2xl sm:text-3xl font-bold text-sky-300">9 Models</div>
+              <div class="text-xs text-slate-300 mt-0.5">0% Refusal Auto-Router</div>
+            </div>
+            <div class="bg-white/10 border border-white/15 rounded-xl p-3.5">
+              <div class="font-display text-2xl sm:text-3xl font-bold text-white">500+</div>
+              <div class="text-xs text-slate-300 mt-0.5">Fuzzy-Search CLI Recipes</div>
+            </div>
+          </div>
+
+          <!-- CTA Buttons -->
+          <div class="flex flex-wrap items-center gap-4 pt-3">
+            <a
+              href="#pricing"
+              class="rj-btn-gradient text-white font-display font-bold px-7 py-4 rounded-xl text-base shadow-lg"
+            >
+              License Apex Terminal OS v2.0 →
+            </a>
+            <a
+              href="#simulator"
+              class="px-6 py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-display font-semibold text-sm transition"
+            >
+              Try Live Terminal Simulator
+            </a>
+          </div>
+
+          <div class="text-xs text-slate-300 flex items-center gap-4 pt-1">
+            <span>✓ 1-Click macOS Setup (`./install/setup.sh`)</span>
+            <span>✓ Includes Full Source &amp; Cheatsheet Vault</span>
+          </div>
+        </div>
+
+        <!-- Hero Right: Live Interactive Terminal Simulator -->
+        <div id="simulator" class="lg:col-span-6">
+          <div class="terminal-window overflow-hidden">
+            <!-- Window Titlebar -->
+            <div class="bg-slate-800/90 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                <span class="ml-2 font-mono text-xs text-slate-300">zsh — apex-terminal-os (88×26)</span>
+              </div>
+              <span class="text-[11px] font-mono text-sky-300 bg-blue-950/80 border border-blue-700/50 px-2.5 py-0.5 rounded">
+                CLICK ANY NUMBER BELOW TO TEST
+              </span>
+            </div>
+
+            <!-- Interactive Ability Selector Buttons -->
+            <div class="bg-slate-900/90 px-4 py-2.5 border-b border-slate-800 flex flex-wrap gap-1.5">
+              <button onclick="simulateAbility(1)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-blue-600 text-white font-semibold" id="btn-sim-1">[1] Auto-Router</button>
+              <button onclick="simulateAbility(2)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-2">[2] Obliterated v2</button>
+              <button onclick="simulateAbility(3)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-3">[3] Sandbox Run</button>
+              <button onclick="simulateAbility(4)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-4">[4] Live Canvas</button>
+              <button onclick="simulateAbility(5)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-5">[5] Project Forge</button>
+              <button onclick="simulateAbility(9)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-9">[9] 500+ Arsenal</button>
+            </div>
+
+            <!-- Terminal Screen Body -->
+            <div class="p-4 sm:p-5 font-mono text-xs leading-relaxed text-slate-200 overflow-x-auto">
+<pre class="text-sky-300 text-[11px] leading-snug mb-3">╔══════════════════════════════════════════════════════════════════════════╗
+║  🏛️  APEX TERMINAL OS — VENICE SOVEREIGN COMMAND &amp; EXECUTION CENTER       ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  [1] 🧠 Natural-Language Auto-Router   [7] ⚡ Frontier Deep Reasoning     ║
+║  [2] 🔓 Obliterated Zero-Refusal       [8] 🎭 Uncensored Roleplay &amp; Copy  ║
+║  [3] 🧪 Hermetic Sandbox &amp; Auto-Run    [9] 🚀 500+ Command Arsenal Search ║
+║  [4] 🎨 Live Interactive Canvas UI     [10] 📂 Run Saved Scripts/Canvases ║
+║  [5] 🏗️  Multi-File Project Forge       [11] 🌐 Instant Cloudflare Tunnel  ║
+║  [6] 🖼️  Uncensored Image Studio        [12] 🎬 Media Downloader (4K/MP3)  ║
+╚══════════════════════════════════════════════════════════════════════════╝</pre>
+              <div id="terminal-sim-output" class="space-y-1.5 min-h-[175px] border-t border-slate-800 pt-3">
+                <!-- Populated dynamically by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- EXECUTIVE METADATA DETAILS BAR -->
+  <section class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-xs">
+        <div>
+          <div class="text-slate-400 uppercase font-display font-bold tracking-wider">Platform Architecture</div>
+          <div class="font-semibold text-slate-900 mt-1">macOS Apple Silicon &amp; Zsh 5.9+</div>
+        </div>
+        <div>
+          <div class="text-slate-400 uppercase font-display font-bold tracking-wider">Lead Architect</div>
+          <div class="font-semibold text-slate-900 mt-1">Rick Jefferson, CEO · RJ Business Solutions</div>
+        </div>
+        <div>
+          <div class="text-slate-400 uppercase font-display font-bold tracking-wider">Core AI Stack</div>
+          <div class="font-semibold text-slate-900 mt-1">9 Uncensored, Obliterated &amp; Frontier Models</div>
+        </div>
+        <div>
+          <div class="text-slate-400 uppercase font-display font-bold tracking-wider">Release Status</div>
+          <div class="font-semibold text-blue-600 mt-1">🟢 v2.0 Production Verified</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 1: THE 12-ABILITY COMMAND CENTER & 5 EXECUTION PILLARS -->
+  <section id="capabilities" class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-14">
+        <span class="rj-badge">SOVEREIGN EXECUTION ARCHITECTURE</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-slate-900 mt-4">
+          Everything Your Terminal Needs to Build, Audit, Transcode &amp; Ship—By Picking a Number.
+        </h2>
+        <p class="text-slate-600 mt-3 text-base">
+          Most developers waste hours context-switching between chat tabs, documentation, broken virtual environments, and half-finished scripts. Apex Terminal OS unifies the entire software lifecycle inside a single terminal keystroke.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+        <!-- Card 1 -->
+        <div class="rj-card p-7">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-display font-bold text-lg mb-5">
+            01
+          </div>
+          <h3 class="font-display text-xl font-bold text-slate-900">
+            12-Ability Startup Command Center
+          </h3>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Every time you open a terminal tab (or type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">m</code>), an interactive numbered dashboard launches. Pick <code class="text-slate-800 font-semibold">[1]–[12]</code> to trigger any engine, or press <code class="text-slate-800 font-semibold">ENTER</code> for your standard Zsh prompt.
+          </p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="rj-card p-7">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-display font-bold text-lg mb-5">
+            02
+          </div>
+          <h3 class="font-display text-xl font-bold text-slate-900">
+            Quote-Free Natural Language Router
+          </h3>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Powered by <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">setopt NO_NOMATCH</code> and <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">noglob</code>, type plain English directly into your terminal without quotes—even with <code class="text-slate-800">?</code> or <code class="text-slate-800">*</code>. A 2-stage semantic classifier routes your task to the optimal uncensored model.
+          </p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="rj-card p-7">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-display font-bold text-lg mb-5">
+            03
+          </div>
+          <h3 class="font-display text-xl font-bold text-slate-900">
+            Self-Healing Hermetic Sandbox
+          </h3>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">sandbox &lt;task&gt;</code>. The engine synthesizes a complete Python, Bash, or TypeScript script, resolves dependencies via <code class="text-slate-800">uv</code> or <code class="text-slate-800">bun</code>, runs it live, and automatically repairs and re-runs the code if an error occurs.
+          </p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="rj-card p-7">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-display font-bold text-lg mb-5">
+            04
+          </div>
+          <h3 class="font-display text-xl font-bold text-slate-900">
+            Live Interactive Visual Canvas Server
+          </h3>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">canvas &lt;ui prompt&gt;</code>. Builds a complete interactive HTML5, Tailwind CSS, and JavaScript application, serves it on <code class="text-slate-800">localhost:7799</code>, and launches it immediately in your macOS browser.
+          </p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="rj-card p-7">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-display font-bold text-lg mb-5">
+            05
+          </div>
+          <h3 class="font-display text-xl font-bold text-slate-900">
+            Multi-File Project Forge &amp; <code class="text-base">runlast</code>
+          </h3>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">forge &lt;spec&gt;</code> to scaffold complete multi-file applications into <code class="text-slate-800">~/.apex-workspace/forge/</code> with an executable <code class="text-slate-800">run.sh</code>. Plus, every code block generated in chat is auto-saved for instant execution via <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">runlast</code>.
+          </p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="rj-card p-7">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-display font-bold text-lg mb-5">
+            06
+          </div>
+          <h3 class="font-display text-xl font-bold text-slate-900">
+            500+ Command Fuzzy Arsenal (<code class="text-base">apex</code>)
+          </h3>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">a</code> to launch an interactive <code class="text-slate-800">fzf</code> search across 9 curated cheatsheets covering Next.js 15, Hono, Cloudflare Workers/D1, Docker, FFmpeg, yt-dlp, Nuclei, Radare2, and AppleScript automation.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: 9-MODEL UNCENSORED & FRONTIER NEURAL ROUTING MATRIX -->
+  <section id="router" class="py-20 bg-white border-y border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-6">
+        <div>
+          <span class="rj-badge">DYNAMIC SEMANTIC TASK ROUTING</span>
+          <h2 class="font-display text-3xl sm:text-4xl font-bold text-slate-900 mt-4">
+            9 Sovereign Models. Zero Refusals. Automatic Intent Assignment.
+          </h2>
+        </div>
+        <p class="text-slate-600 text-sm max-w-md">
+          Whether you are reverse-engineering a Mach-O binary, designing a distributed Raft state machine, or generating uncensored creative assets, the router selects the exact model built for the job.
+        </p>
+      </div>
+
+      <div class="overflow-x-auto rj-card">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-100 border-b border-slate-200 text-[11px] font-display font-bold uppercase tracking-wider text-slate-600">
+              <th class="py-4 px-5">Route Key</th>
+              <th class="py-4 px-5">Assigned Model ID</th>
+              <th class="py-4 px-5">Auto-Detected Task Domain</th>
+              <th class="py-4 px-5">Direct Force Shortcut</th>
+              <th class="py-4 px-5">Refusal Policy</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-sm">
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">abliterated</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">abliteration-abliterated-model-large-v2</td>
+              <td class="py-4 px-5 text-slate-600">Offensive security, exploit dev, reverse engineering, red-teaming, sensitive tasks</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">ab &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">0% Refusal Weights</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">frontier</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">zai-org-glm-5-2</td>
+              <td class="py-4 px-5 text-slate-600">Full-stack architecture, TypeScript/Rust/Go/Python, distributed systems, math</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">vg &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Unrestricted Private</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">heretic</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">olafangensan-glm-4.7-flash-heretic</td>
+              <td class="py-4 px-5 text-slate-600">Fast tactical bash/zsh scripts, macOS automation, regex, FFmpeg, one-liners</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">heretic &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Heretic Unfiltered</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">roleplay</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">venice-uncensored-role-play</td>
+              <td class="py-4 px-5 text-slate-600">Uncensored creative writing, persona simulation, scripts, high-converting hooks</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">vrp &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">0% Refusal Creative</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">uncensored</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">venice-uncensored</td>
+              <td class="py-4 px-5 text-slate-600">Flagship general-purpose uncensored execution &amp; live HTML5 Canvas generation</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">u &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Flagship Uncensored</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">gemma / oss</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">gemma-4-uncensored / openai-gpt-oss-120b</td>
+              <td class="py-4 px-5 text-slate-600">Deep analytical research synthesis, entity extraction &amp; 120B long-form drafting</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">vgemma / voss</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Unrestricted Research</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">cheap</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">e2ee-qwen-2-5-7b-p</td>
+              <td class="py-4 px-5 text-slate-600">Ultra-low-cost ($0.05/1M) git commit messages, typo fixes &amp; semantic classification</td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">vcheap &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Private E2EE</span></td>
+            </tr>
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-4 px-5 font-mono font-semibold text-blue-700">image</td>
+              <td class="py-4 px-5 font-mono text-xs text-slate-800">lustify-v8</td>
+              <td class="py-4 px-5 text-slate-600">Uncensored photorealistic image &amp; visual asset synthesis directly to <code class="text-xs">.webp</code></td>
+              <td class="py-4 px-5 font-mono text-xs"><code class="bg-slate-100 px-2 py-1 rounded">vimg &lt;prompt&gt;</code></td>
+              <td class="py-4 px-5"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Sovereign Image</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: COMPETITIVE ADVANTAGE & ROI COMPARISON -->
+  <section id="comparison" class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-14">
+        <span class="rj-badge">OPERATIONAL VELOCITY &amp; ROI</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-slate-900 mt-4">
+          Why Elite Engineers &amp; Agencies Upgrade to Apex Terminal OS
+        </h2>
+      </div>
+
+      <div class="overflow-x-auto rj-card">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-100 border-b border-slate-200 text-xs font-display font-bold uppercase tracking-wider text-slate-600">
+              <th class="py-4 px-6">Capability</th>
+              <th class="py-4 px-6">Standard macOS Terminal</th>
+              <th class="py-4 px-6">Generic CLI Chat Wrappers</th>
+              <th class="py-4 px-6 bg-blue-50 text-blue-800">🏛️ Apex Terminal OS v2.0</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-sm">
+            <tr>
+              <td class="py-4 px-6 font-semibold text-slate-900">Terminal Startup Experience</td>
+              <td class="py-4 px-6 text-slate-500">Blank prompt</td>
+              <td class="py-4 px-6 text-slate-500">Manual CLI flags required</td>
+              <td class="py-4 px-6 bg-blue-50/40 font-semibold text-slate-900">✓ 12-Ability Numbered Command Center</td>
+            </tr>
+            <tr>
+              <td class="py-4 px-6 font-semibold text-slate-900">Model Selection &amp; Refusals</td>
+              <td class="py-4 px-6 text-slate-500">None</td>
+              <td class="py-4 px-6 text-slate-500">Single censored model; frequent refusals</td>
+              <td class="py-4 px-6 bg-blue-50/40 font-semibold text-slate-900">✓ 9 Uncensored/Obliterated Models Auto-Routed</td>
+            </tr>
+            <tr>
+              <td class="py-4 px-6 font-semibold text-slate-900">Code Execution &amp; Repair</td>
+              <td class="py-4 px-6 text-slate-500">Manual copy, paste, debug</td>
+              <td class="py-4 px-6 text-slate-500">Prints text only; user fixes errors</td>
+              <td class="py-4 px-6 bg-blue-50/40 font-semibold text-slate-900">✓ Hermetic Sandbox + Auto-Heal Repair Loop</td>
+            </tr>
+            <tr>
+              <td class="py-4 px-6 font-semibold text-slate-900">Interactive UI / Web App Preview</td>
+              <td class="py-4 px-6 text-slate-500">Manual boilerplate setup</td>
+              <td class="py-4 px-6 text-slate-500">None</td>
+              <td class="py-4 px-6 bg-blue-50/40 font-semibold text-slate-900">✓ Live HTML5/Tailwind Canvas Server (:7799)</td>
+            </tr>
+            <tr>
+              <td class="py-4 px-6 font-semibold text-slate-900">Curated Command Library</td>
+              <td class="py-4 px-6 text-slate-500">Search Google / man pages</td>
+              <td class="py-4 px-6 text-slate-500">None</td>
+              <td class="py-4 px-6 bg-blue-50/40 font-semibold text-slate-900">✓ 500+ Fuzzy-Searchable Recipes (<code class="text-blue-600">apex</code>)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: COMMERCIAL LICENSING & PRICING TIERS -->
+  <section id="pricing" class="py-20 bg-white border-t border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-14">
+        <span class="rj-badge">COMMERCIAL LICENSING &amp; DEPLOYMENT</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-slate-900 mt-4">
+          Select Your Apex Terminal OS v2.0 License
+        </h2>
+        <p class="text-slate-600 mt-3 text-base">
+          One-time perpetual licensing with full source code, 1-click automated installer (<code class="text-blue-600 font-mono">./install/setup.sh</code>), and zero recurring subscription lock-in.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+        <!-- Tier 1: Solo Operator -->
+        <div class="rj-card p-8 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="rj-badge">SOLO OPERATOR</span>
+              <span class="text-xs font-mono text-slate-400">1 MAC WORKSTATION</span>
+            </div>
+            <h3 class="font-display text-2xl font-bold text-slate-900 mt-5">
+              Developer Edition
+            </h3>
+            <div class="mt-4 flex items-baseline gap-2">
+              <span class="font-display text-4xl font-bold text-slate-900">$197</span>
+              <span class="text-xs text-slate-500 font-medium uppercase">One-Time License</span>
+            </div>
+            <p class="text-slate-600 text-sm mt-3">
+              Ideal for solo developers, creators, and power users upgrading their personal MacBook workstation.
+            </p>
+
+            <ul class="mt-6 space-y-3 text-sm text-slate-700 border-t border-slate-100 pt-6">
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>12-Ability Startup Command Center</strong> (<code class="text-xs">m</code> / <code class="text-xs">menu</code>)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>500+ Command Fuzzy Arsenal</strong> (<code class="text-xs">apex</code>) across 9 domains</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Hermetic Sandbox Runner</strong> (<code class="text-xs">sandbox</code>) &amp; <code class="text-xs">runlast</code></span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Live Interactive Canvas Server</strong> (<code class="text-xs">canvas</code> on port 7799)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span>1-Click Automated macOS Setup Script</span></li>
+            </ul>
+          </div>
+
+          <button
+            onclick="openCheckoutModal('Solo Operator — Developer Edition', '$197')"
+            class="mt-8 w-full py-3.5 px-5 rounded-xl border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-display font-bold text-sm transition"
+          >
+            Select Developer Edition ($197)
+          </button>
+        </div>
+
+        <!-- Tier 2: Pro Agency & Sovereign Edition (Featured) -->
+        <div class="rj-card-featured p-8 flex flex-col justify-between relative">
+          <div class="absolute -top-3.5 right-6 bg-blue-600 text-white font-display font-bold text-[11px] uppercase tracking-wider px-3.5 py-1 rounded-full shadow">
+            Recommended · Best Value
+          </div>
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="rj-badge">SOVEREIGN PRO EDITION</span>
+              <span class="text-xs font-mono text-blue-600 font-semibold">UP TO 5 MACS</span>
+            </div>
+            <h3 class="font-display text-2xl font-bold text-slate-900 mt-5">
+              Sovereign Full-Spectrum Suite
+            </h3>
+            <div class="mt-4 flex items-baseline gap-2">
+              <span class="font-display text-4xl font-bold text-blue-600">$497</span>
+              <span class="text-xs text-slate-500 font-medium uppercase">One-Time License</span>
+            </div>
+            <p class="text-slate-600 text-sm mt-3">
+              Complete zero-refusal neural routing, multi-file app forging, and automatic failover for founders and agencies.
+            </p>
+
+            <ul class="mt-6 space-y-3 text-sm text-slate-700 border-t border-slate-100 pt-6">
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Everything in Developer Edition</strong></span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>2-Stage Semantic Neural Auto-Router</strong> across all 9 Venice Uncensored, Obliterated &amp; Frontier models</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Multi-File Full-Stack Project Forge</strong> (<code class="text-xs">forge</code>)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Zero-Downtime Sovereign Failover Engine</strong> (Venice + GLM + OpenRouter backup routing)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Uncensored Image Studio</strong> (<code class="text-xs">lustify-v8</code> CLI renderer)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Adversarial Git Security Auditor</strong> (<code class="text-xs">uaudit</code> &amp; <code class="text-xs">aicommit</code>)</span></li>
+            </ul>
+          </div>
+
+          <button
+            onclick="openCheckoutModal('Sovereign Full-Spectrum Suite (Pro)', '$497')"
+            class="mt-8 w-full py-4 px-5 rounded-xl rj-btn-gradient text-white font-display font-bold text-sm shadow-md"
+          >
+            Activate Sovereign Suite ($497) →
+          </button>
+        </div>
+
+        <!-- Tier 3: Enterprise & White-Label -->
+        <div class="rj-card p-8 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="rj-badge">ENTERPRISE &amp; WHITE-LABEL</span>
+              <span class="text-xs font-mono text-slate-400">UNLIMITED SEATS</span>
+            </div>
+            <h3 class="font-display text-2xl font-bold text-slate-900 mt-5">
+              Enterprise Agency Fleet
+            </h3>
+            <div class="mt-4 flex items-baseline gap-2">
+              <span class="font-display text-4xl font-bold text-slate-900">$1,997</span>
+              <span class="text-xs text-slate-500 font-medium uppercase">Enterprise License</span>
+            </div>
+            <p class="text-slate-600 text-sm mt-3">
+              Custom-branded terminal OS for engineering organizations, red-team consultancies, and white-label resellers.
+            </p>
+
+            <ul class="mt-6 space-y-3 text-sm text-slate-700 border-t border-slate-100 pt-6">
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Unlimited Team &amp; Client Installations</strong></span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Full White-Label Rebranding Rights</strong> (Your company name &amp; custom startup menu)</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>Custom Internal Cheatsheet Vaults</strong> tailored to your company's cloud &amp; SOPs</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>1Password CLI &amp; Cloudflare Zero-Trust</strong> team provisioning templates</span></li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-600 font-bold">✓</span><span><strong>1-on-1 Architecture Session</strong> with Rick Jefferson</span></li>
+            </ul>
+          </div>
+
+          <button
+            onclick="openCheckoutModal('Enterprise Agency Fleet & White-Label License', '$1,997')"
+            class="mt-8 w-full py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-sm transition"
+          >
+            Deploy Enterprise Fleet ($1,997)
+          </button>
+        </div>
+      </div>
+
+      <!-- OFFICIAL PAYMENT & SETTLEMENT CHANNELS BAR -->
+      <div class="mt-14 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="rj-card p-6 bg-slate-50/70">
+          <div class="flex items-center justify-between">
+            <span class="rj-badge">PRIMARY INSTANT SETTLEMENT · ZELLE</span>
+            <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">Instant Provisioning</span>
+          </div>
+          <div class="mt-4 font-display text-lg font-bold text-slate-900">
+            RJ Business Solutions — Official Zelle
+          </div>
+          <p class="text-xs text-slate-600 mt-1">
+            Send exact license total via Zelle and include your GitHub username or email in the memo for immediate repository &amp; vault activation:
+          </p>
+          <div class="mt-3 flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-2.5 font-mono text-sm text-blue-700 font-semibold">
+            <span id="zelle-email">rjbizsolution23@gmail.com</span>
+            <button onclick="copyText('rjbizsolution23@gmail.com', this)" class="text-xs font-sans bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-1 rounded font-semibold">Copy</button>
+          </div>
+        </div>
+
+        <div class="rj-card p-6 bg-slate-50/70">
+          <div class="flex items-center justify-between">
+            <span class="rj-badge">ENTERPRISE SETTLEMENT · DOMESTIC WIRE</span>
+            <span class="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">Wells Fargo N.A.</span>
+          </div>
+          <div class="mt-4 font-display text-lg font-bold text-slate-900">
+            Domestic Wire / ACH Transfer
+          </div>
+          <p class="text-xs text-slate-600 mt-1">
+            Beneficiary: <strong>RJ Business Solutions</strong> (1342 NM 333, Tijeras, NM 87059) · Email receipt to <code class="text-blue-600">support@rjbusinesssolutions.org</code>
+          </p>
+          <div class="mt-3 flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-2.5 font-mono text-sm text-slate-800 font-semibold">
+            <span>ABA Routing: <strong class="text-blue-700">121000248</strong> (Wells Fargo)</span>
+            <button onclick="copyText('121000248', this)" class="text-xs font-sans bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-1 rounded font-semibold">Copy Routing</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5: ARCHITECT AUTHORITY & DUAL SIGNATURE / GUARANTEE BLOCK -->
+  <section class="py-16 bg-slate-50 border-t border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="rj-card p-8 sm:p-10">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-8 space-y-3">
+            <span class="rj-badge">ARCHITECTED BY RICK JEFFERSON</span>
+            <h3 class="font-display text-2xl font-bold text-slate-900">
+              Engineered for Zero-Defect Production Velocity
+            </h3>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              <strong>Rick Jefferson</strong> (Credit Technology Architect, AI Systems Builder, and CEO of RJ Business Solutions) engineered Apex Terminal OS v2.0 to power multi-agent production swarms, Cloudflare edge microservices, and sovereign local/cloud AI pipelines without guardrails slowing down execution.
+            </p>
+            <div class="pt-2 flex flex-wrap gap-4 text-xs font-semibold text-blue-600">
+              <a href="https://rjbusinesssolutions.org" target="_blank" rel="noopener" class="hover:underline">🌐 rjbusinesssolutions.org</a>
+              <a href="https://github.com/rjbizsolution23-wq/apex-terminal-os" target="_blank" rel="noopener" class="hover:underline">💻 github.com/rjbizsolution23-wq</a>
+              <a href="https://www.linkedin.com/in/rick-jefferson-314998235" target="_blank" rel="noopener" class="hover:underline">🔗 LinkedIn</a>
+              <a href="https://twitter.com/ricksolutions1" target="_blank" rel="noopener" class="hover:underline">𝕏 @ricksolutions1</a>
+              <a href="https://www.tiktok.com/@rick_jeff_solution" target="_blank" rel="noopener" class="hover:underline">🎵 @rick_jeff_solution</a>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-5">
+            <div class="text-[11px] font-display uppercase font-bold tracking-wider text-slate-400">
+              One-Line Verified Deployment
+            </div>
+            <pre class="mt-2 bg-slate-900 text-sky-300 p-3.5 rounded-lg text-[11px] overflow-x-auto font-mono">git clone https://github.com/rjbizsolution23-wq/apex-terminal-os.git ~/apex-terminal-os &amp;&amp; ~/apex-terminal-os/install/setup.sh</pre>
+            <button
+              onclick="copyText('git clone https://github.com/rjbizsolution23-wq/apex-terminal-os.git ~/apex-terminal-os && ~/apex-terminal-os/install/setup.sh', this)"
+              class="mt-3 w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-display font-bold transition"
+            >
+              Copy One-Line Installer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHECKOUT & LICENSE ACTIVATION MODAL -->
+  <div id="checkout-modal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-7 border border-blue-200 shadow-2xl relative">
+      <button onclick="closeCheckoutModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+      <span class="rj-badge">INSTANT LICENSE PROVISIONING</span>
+      <h3 id="modal-tier-title" class="font-display text-2xl font-bold text-slate-900 mt-3">
+        Sovereign Full-Spectrum Suite
+      </h3>
+      <div class="mt-1 text-sm text-slate-600">
+        Selected License Total: <strong id="modal-tier-price" class="text-blue-600 font-display text-lg">$497</strong>
+      </div>
+
+      <div class="mt-5 space-y-4 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
+        <div>
+          <div class="font-display font-bold uppercase text-slate-500">Step 1: Complete Settlement</div>
+          <p class="mt-1">Send via <strong>Zelle</strong> to <code class="text-blue-700 font-bold">rjbizsolution23@gmail.com</code> or Domestic Wire (Routing <code class="text-blue-700 font-bold">121000248</code> · Wells Fargo).</p>
+        </div>
+        <div class="border-t border-slate-200 pt-3">
+          <div class="font-display font-bold uppercase text-slate-500">Step 2: Run 1-Click Installer</div>
+          <pre class="mt-1.5 bg-slate-900 text-emerald-400 p-2.5 rounded font-mono text-[11px] overflow-x-auto">git clone https://github.com/rjbizsolution23-wq/apex-terminal-os.git ~/apex-terminal-os
+cd ~/apex-terminal-os &amp;&amp; ./install/setup.sh &amp;&amp; source ~/.zshrc</pre>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end gap-3">
+        <button onclick="closeCheckoutModal()" class="px-4 py-2.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold">Close</button>
+        <a
+          href="mailto:support@rjbusinesssolutions.org?subject=Apex%20Terminal%20OS%20v2.0%20License%20Activation"
+          class="rj-btn-gradient text-white font-display font-bold text-xs px-5 py-2.5 rounded-lg"
+        >
+          Email Activation Receipt →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- OFFICIAL LEGAL FOOTER -->
+  <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <img
+            src="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg"
+            alt="RJ Business Solutions Logo"
+            class="w-9 h-9 rounded object-cover border border-slate-700"
+          />
+          <div>
+            <div class="font-display font-bold text-white text-sm">RJ BUSINESS SOLUTIONS</div>
+            <div class="text-xs text-slate-400">1342 NM 333, Tijeras, New Mexico 87059 · support@rjbusinesssolutions.org</div>
+          </div>
+        </div>
+        <div class="text-xs text-slate-400">
+          © 2026 RJ Business Solutions. Engineered by Rick Jefferson. All Rights Reserved.
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-6 leading-relaxed">
+        <strong>Legal Disclaimer:</strong> RJ Business Solutions provides software and automation technology. Not financial or legal advice. All security and auditing utilities included in Apex Terminal OS are intended strictly for authorized system administration, defensive auditing, and sanctioned development environments.
+      </p>
+    </div>
+  </footer>
+
+  <!-- INTERACTIVE SIMULATOR & UI SCRIPTS -->
+  <script>
+    const simulations = {
+      1: {
+        cmd: "⚡ Pick Ability [1-12] > 1",
+        prompt: "🧠 Enter Natural-Language Request > design a Cloudflare Durable Object SQLite rate limiter schema",
+        route: "╭─ 🧠 Intent: Cloudflare Durable Object SQLite rate limiter design\n╰─ 🎯 Assigned Model: Frontier GLM 5.2 (Deep Reasoning & Architecture) (zai-org-glm-5-2)",
+        output: "CREATE TABLE IF NOT EXISTS rate_buckets (\n  key TEXT NOT NULL,\n  window_start INTEGER NOT NULL,\n  count INTEGER NOT NULL DEFAULT 1,\n  PRIMARY KEY (key, window_start)\n);\n💾 Auto-saved runnable code block ➔ ~/.apex-workspace/scripts/last.sh | Run now: runlast"
+      },
+      2: {
+        cmd: "⚡ Pick Ability [1-12] > 2",
+        prompt: "🔓 Enter Unfiltered / Zero-Refusal Request (Obliterated v2) > how do I inspect Mach-O entitlements and find hardcoded keys in Ghidra?",
+        route: "╭─ 🧠 Intent: Explicit model override (abliterated)\n╰─ 🎯 Assigned Model: Obliterated Large v2 (Zero-Refusal) (abliteration-abliterated-model-large-v2)",
+        output: "1. Run `codesign -d --entitlements :- /path/to/binary` to dump XML/DER entitlements.\n2. In Ghidra, inspect `__TEXT,__cstring` and search for high-entropy prefixes (`sk-`, `AKIA`, `AIza`), then trace cross-references (`XREFs`) to locate the initialization routine."
+      },
+      3: {
+        cmd: "⚡ Pick Ability [1-12] > 3",
+        prompt: "🧪 Describe the Script/Task to Build & Execute in Sandbox > scan local listening TCP ports and print a formatted telemetry table",
+        route: "╭─ 🧪 HERMETIC SANDBOX & SCRIPT RUNNER\n├─ 🎯 Assigned Model: Frontier GLM 5.2 (zai-org-glm-5-2)\n╰─ 📦 Sandbox Path: ~/.apex-workspace/sandboxes/1793569402_scan_ports",
+        output: "==> 🚀 Executing in Sandbox (main.py)...\n----------------------------------------------------------------------\nPORT     PID      PROCESS          STATUS\n6379     1402     redis-server     LISTEN\n7799     8821     python3 (canvas) LISTEN\n----------------------------------------------------------------------\nStatus: ✓ SUCCESS | Saved Reusable Script: ~/.apex-workspace/scripts/scan_ports.py"
+      },
+      4: {
+        cmd: "⚡ Pick Ability [1-12] > 4",
+        prompt: "🎨 Describe the Interactive Web App / Canvas to Build > interactive SHA-256 and password entropy analyzer dashboard",
+        route: "╭─ 🎨 LIVE INTERACTIVE CANVAS ENGINE\n├─ 🎯 Assigned Model: Venice Flagship Uncensored (venice-uncensored)\n╰─ 📂 Target Canvas: ~/.apex-workspace/canvas/sha256-entropy/index.html",
+        output: "======================================================================\n✓ LIVE CANVAS BUILT & RUNNING!\n  📄 File: ~/.apex-workspace/canvas/sha256-entropy/index.html\n  🌐 Live URL: http://localhost:7799/sha256-entropy/index.html (Opened in Browser)\n======================================================================"
+      },
+      5: {
+        cmd: "⚡ Pick Ability [1-12] > 5",
+        prompt: "🏗️ Describe the Multi-File Full-Stack Project to Forge > Hono TypeScript API with SQLite auth and test suite",
+        route: "╭─ 🏗️ APEX MULTI-FILE PROJECT FORGE\n├─ 🎯 Assigned Model: Frontier GLM 5.2 (zai-org-glm-5-2)\n╰─ 📁 Project Root: ~/.apex-workspace/forge/hono-sqlite-api",
+        output: "✓ FORGED 5 PROJECT FILES IN: ~/.apex-workspace/forge/hono-sqlite-api\n  • package.json\n  • src/index.ts\n  • src/db.ts\n  • test/auth.test.ts\n  • run.sh\n🚀 Run Project: cd ~/.apex-workspace/forge/hono-sqlite-api && ./run.sh"
+      },
+      9: {
+        cmd: "⚡ Pick Ability [1-12] > 9",
+        prompt: "⚡ Apex Search > cloudflare tunnel",
+        route: "Selected from 03-cloud-docker-network.txt:",
+        output: "✓ Copied to clipboard: cloudflared tunnel --url http://localhost:3000\n==> Exposing local server on https://random-edge-node.trycloudflare.com"
+      }
+    };
+
+    function simulateAbility(num) {
+      document.querySelectorAll('.sim-btn').forEach(btn => {
+        btn.className = "sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700";
+      });
+      const activeBtn = document.getElementById('btn-sim-' + num);
+      if (activeBtn) {
+        activeBtn.className = "sim-btn px-2.5 py-1 rounded text-xs font-mono bg-blue-600 text-white font-semibold";
+      }
+
+      const data = simulations[num];
+      const container = document.getElementById('terminal-sim-output');
+      container.innerHTML = `
+        <div class="text-emerald-400 font-semibold">${data.cmd}</div>
+        <div class="text-sky-300">${data.prompt}</div>
+        <pre class="text-amber-300 text-[11px] whitespace-pre-wrap mt-1">${data.route}</pre>
+        <pre class="text-slate-100 bg-slate-950/80 border border-slate-800 rounded p-2.5 text-[11px] whitespace-pre-wrap mt-1.5">${data.output}</pre>
+      `;
+    }
+
+    function openCheckoutModal(title, price) {
+      document.getElementById('modal-tier-title').textContent = title;
+      document.getElementById('modal-tier-price').textContent = price;
+      document.getElementById('checkout-modal').classList.remove('hidden');
+    }
+
+    function closeCheckoutModal() {
+      document.getElementById('checkout-modal').classList.add('hidden');
+    }
+
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = "✓ Copied";
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+      });
+    }
+
+    // Initialize simulator with Ability [1]
+    simulateAbility(1);
+  </script>
+</body>
+</html>
