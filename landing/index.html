@@ -589,7 +589,7 @@
           </div>
 
           <button
-            onclick="openCheckoutModal('Solo Operator — Developer Edition', '$197')"
+            onclick="openCheckoutModal('developer', 'Solo Operator — Developer Edition', '$197')"
             class="mt-8 w-full py-3.5 px-5 rounded-xl border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-display font-bold text-sm transition"
           >
             Select Developer Edition ($197)
@@ -628,7 +628,7 @@
           </div>
 
           <button
-            onclick="openCheckoutModal('Sovereign Full-Spectrum Suite (Pro)', '$497')"
+            onclick="openCheckoutModal('sovereign', 'Sovereign Full-Spectrum Suite (Pro)', '$497')"
             class="mt-8 w-full py-4 px-5 rounded-xl rj-btn-gradient text-white font-display font-bold text-sm shadow-md"
           >
             Activate Sovereign Suite ($497) →
@@ -663,7 +663,7 @@
           </div>
 
           <button
-            onclick="openCheckoutModal('Enterprise Agency Fleet & White-Label License', '$1,997')"
+            onclick="openCheckoutModal('enterprise', 'Enterprise Agency Fleet & White-Label License', '$1,997')"
             class="mt-8 w-full py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-sm transition"
           >
             Deploy Enterprise Fleet ($1,997)
@@ -749,38 +749,90 @@
     </div>
   </section>
 
-  <!-- CHECKOUT & LICENSE ACTIVATION MODAL -->
+  <!-- CHECKOUT & TIER-MATCHED PACKAGE DELIVERY MODAL -->
   <div id="checkout-modal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-7 border border-blue-200 shadow-2xl relative">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-7 border border-blue-200 shadow-2xl relative max-h-[92vh] overflow-y-auto">
       <button onclick="closeCheckoutModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
-      <span class="rj-badge">INSTANT LICENSE PROVISIONING</span>
+      <span class="rj-badge">INSTANT PACKAGE FULFILLMENT ENGINE</span>
       <h3 id="modal-tier-title" class="font-display text-2xl font-bold text-slate-900 mt-3">
         Sovereign Full-Spectrum Suite
       </h3>
-      <div class="mt-1 text-sm text-slate-600">
-        Selected License Total: <strong id="modal-tier-price" class="text-blue-600 font-display text-lg">$497</strong>
+      <div class="mt-1 text-sm text-slate-600 flex items-center justify-between">
+        <span>Selected License Total: <strong id="modal-tier-price" class="text-blue-600 font-display text-lg">$497</strong></span>
+        <span id="modal-pkg-badge" class="font-mono text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded">Package: apex-terminal-os-sovereign-pro-v2.0.zip</span>
       </div>
 
-      <div class="mt-5 space-y-4 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
-        <div>
-          <div class="font-display font-bold uppercase text-slate-500">Step 1: Complete Settlement</div>
-          <p class="mt-1">Send via <strong>Zelle</strong> to <code class="text-blue-700 font-bold">rjbizsolution23@gmail.com</code> or Domestic Wire (Routing <code class="text-blue-700 font-bold">121000248</code> · Wells Fargo).</p>
+      <!-- STEP 1: PAYMENT SETTLEMENT -->
+      <div class="mt-5 space-y-3 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
+        <div class="font-display font-bold uppercase text-slate-500">Step 1: Complete Settlement</div>
+        <p>Send exact license total via <strong>Zelle</strong> to <code class="text-blue-700 font-bold">rjbizsolution23@gmail.com</code> or Domestic Wire (Routing <code class="text-blue-700 font-bold">121000248</code> · Wells Fargo). Upon payment confirmation, you receive your tier-specific License Key (`RJ-DEV-...`, `RJ-SOV-...`, or `RJ-ENT-...`).</p>
+      </div>
+
+      <!-- STEP 2: ENTER LICENSE KEY TO UNLOCK EXACT PACKAGE -->
+      <div class="mt-4 bg-blue-50/60 border border-blue-200 rounded-xl p-4">
+        <label for="license-key-input" class="block font-display font-bold uppercase text-[11px] text-blue-800 tracking-wider">
+          Step 2: Enter Paid License Key to Unlock &amp; Download Your Exact Package
+        </label>
+        <div class="mt-2 flex gap-2">
+          <input
+            id="license-key-input"
+            type="text"
+            placeholder="e.g. RJ-SOV-2026 or RJ-SOV-XXXX-XXXX-XXXX"
+            class="flex-1 px-3.5 py-2.5 rounded-lg border border-blue-300 font-mono text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 uppercase"
+          />
+          <button
+            onclick="verifyAndDeliverPackage()"
+            class="rj-btn-gradient text-white font-display font-bold text-xs px-5 py-2.5 rounded-lg whitespace-nowrap"
+          >
+            Unlock Package →
+          </button>
         </div>
-        <div class="border-t border-slate-200 pt-3">
-          <div class="font-display font-bold uppercase text-slate-500">Step 2: Run 1-Click Installer</div>
-          <pre class="mt-1.5 bg-slate-900 text-emerald-400 p-2.5 rounded font-mono text-[11px] overflow-x-auto">git clone https://github.com/rjbizsolution23-wq/apex-terminal-os.git ~/apex-terminal-os
-cd ~/apex-terminal-os &amp;&amp; ./install/setup.sh &amp;&amp; source ~/.zshrc</pre>
+        <div id="license-error-msg" class="hidden text-xs text-red-600 font-semibold mt-2"></div>
+      </div>
+
+      <!-- STEP 3: UNLOCKED PACKAGE DOWNLOAD VAULT (Revealed upon valid key) -->
+      <div id="unlocked-package-vault" class="hidden mt-4 bg-emerald-50 border-2 border-emerald-500 rounded-xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-display font-bold text-[10px] uppercase tracking-wider">
+            ✓ LICENSE VERIFIED &amp; UNLOCKED
+          </span>
+          <span id="unlocked-tier-label" class="font-mono text-xs font-bold text-emerald-900"></span>
+        </div>
+        <div class="text-xs text-emerald-900 font-medium" id="unlocked-modules-summary"></div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <a
+            id="download-zip-link"
+            href="packages/apex-terminal-os-sovereign-pro-v2.0.zip"
+            download
+            class="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-display font-bold text-xs shadow transition"
+          >
+            <span>⬇️ Download .ZIP Package</span>
+          </a>
+          <a
+            id="download-tar-link"
+            href="packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz"
+            download
+            class="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-xs transition"
+          >
+            <span>⬇️ Download .TAR.GZ Archive</span>
+          </a>
+        </div>
+
+        <div class="pt-2">
+          <div class="text-[11px] font-display font-bold uppercase text-emerald-800">After Extracting — Run 1-Click Setup:</div>
+          <pre id="unlocked-cli-cmd" class="mt-1 bg-slate-900 text-emerald-400 p-2.5 rounded font-mono text-[11px] overflow-x-auto"></pre>
         </div>
       </div>
 
-      <div class="mt-6 flex items-center justify-end gap-3">
-        <button onclick="closeCheckoutModal()" class="px-4 py-2.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold">Close</button>
+      <div class="mt-6 flex items-center justify-between gap-3">
         <a
-          href="mailto:support@rjbusinesssolutions.org?subject=Apex%20Terminal%20OS%20v2.0%20License%20Activation"
-          class="rj-btn-gradient text-white font-display font-bold text-xs px-5 py-2.5 rounded-lg"
+          href="mailto:support@rjbusinesssolutions.org?subject=Apex%20Terminal%20OS%20v2.0%20Payment%20Confirmation"
+          class="text-xs font-semibold text-blue-600 hover:underline"
         >
-          Email Activation Receipt →
+          Paid via Zelle/Wire? Request Key via Email →
         </a>
+        <button onclick="closeCheckoutModal()" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold">Close</button>
       </div>
     </div>
   </div>
@@ -870,10 +922,88 @@ cd ~/apex-terminal-os &amp;&amp; ./install/setup.sh &amp;&amp; source ~/.zshrc</
       `;
     }
 
-    function openCheckoutModal(title, price) {
+    const packageCatalog = {
+      developer: {
+        name: "Solo Operator — Developer Edition ($197)",
+        zip: "packages/apex-terminal-os-developer-v2.0.zip",
+        tar: "packages/apex-terminal-os-developer-v2.0.tar.gz",
+        folder: "apex-terminal-os-developer-v2.0",
+        summary: "Includes: 12-Ability Startup Command Center, 500+ Command Arsenal (Cheatsheets 01–08), Hermetic Sandbox Runner, Live Canvas Server, and 1-Click Installer."
+      },
+      sovereign: {
+        name: "Sovereign Full-Spectrum Suite ($497)",
+        zip: "packages/apex-terminal-os-sovereign-pro-v2.0.zip",
+        tar: "packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz",
+        folder: "apex-terminal-os-sovereign-pro-v2.0",
+        summary: "Includes: Full 9-Model Uncensored/Obliterated/Frontier Neural Auto-Router, Multi-File Project Forge, Zero-Downtime Sovereign Failover, Lustify v8 Image Studio, and Up to 5 Mac Activations."
+      },
+      enterprise: {
+        name: "Enterprise Agency Fleet & White-Label ($1,997)",
+        zip: "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip",
+        tar: "packages/apex-terminal-os-enterprise-whitelabel-v2.0.tar.gz",
+        folder: "apex-terminal-os-enterprise-whitelabel-v2.0",
+        summary: "Includes: Unlimited Seats, White-Label Custom Rebranding CLI (apex-whitelabel), Client License Generator (apex-fulfill), Multi-Mac SSH Fleet Deployer, and White-Label Sales Page."
+      }
+    };
+
+    let selectedTierKey = "sovereign";
+
+    function openCheckoutModal(tierKey, title, price) {
+      selectedTierKey = tierKey || "sovereign";
+      const pkg = packageCatalog[selectedTierKey];
       document.getElementById('modal-tier-title').textContent = title;
       document.getElementById('modal-tier-price').textContent = price;
+      document.getElementById('modal-pkg-badge').textContent = "Package: " + pkg.zip.split('/')[1];
+      document.getElementById('license-key-input').value = "";
+      document.getElementById('license-error-msg').classList.add('hidden');
+      document.getElementById('unlocked-package-vault').classList.add('hidden');
       document.getElementById('checkout-modal').classList.remove('hidden');
+    }
+
+    function validateKeyTier(rawKey) {
+      const k = rawKey.trim().toUpperCase();
+      if (k === "RJ-DEV-2026") return "developer";
+      if (k === "RJ-SOV-2026") return "sovereign";
+      if (k === "RJ-ENT-2026") return "enterprise";
+
+      // Validate keys generated by `apex-fulfill` (Format: RJ-(DEV|SOV|ENT)-XXXX-XXXX-NNX9)
+      const parts = k.split("-");
+      if (parts.length === 5 && parts[0] === "RJ" && parts[4].endsWith("X9")) {
+        const prefix = parts[1];
+        const block1 = parts[2];
+        const chkPart = parseInt(parts[4].slice(0, 2), 10);
+        let sum = 0;
+        for (let i = 0; i < block1.length; i++) sum += block1.charCodeAt(i);
+        if ((sum % 97) === chkPart) {
+          if (prefix === "DEV") return "developer";
+          if (prefix === "SOV") return "sovereign";
+          if (prefix === "ENT") return "enterprise";
+        }
+      }
+      return null;
+    }
+
+    function verifyAndDeliverPackage() {
+      const inputVal = document.getElementById('license-key-input').value;
+      const errEl = document.getElementById('license-error-msg');
+      const vaultEl = document.getElementById('unlocked-package-vault');
+
+      const unlockedTier = validateKeyTier(inputVal);
+      if (!unlockedTier) {
+        errEl.textContent = "Invalid or unrecognized license key. Please enter a valid RJ-DEV, RJ-SOV, or RJ-ENT license key.";
+        errEl.classList.remove('hidden');
+        vaultEl.classList.add('hidden');
+        return;
+      }
+
+      errEl.classList.add('hidden');
+      const pkg = packageCatalog[unlockedTier];
+      document.getElementById('unlocked-tier-label').textContent = pkg.name;
+      document.getElementById('unlocked-modules-summary').textContent = pkg.summary;
+      document.getElementById('download-zip-link').href = pkg.zip;
+      document.getElementById('download-tar-link').href = pkg.tar;
+      document.getElementById('unlocked-cli-cmd').textContent = `unzip ${pkg.zip.split('/')[1]} && cd ${pkg.folder} && ./install/setup.sh && source ~/.zshrc`;
+      vaultEl.classList.remove('hidden');
     }
 
     function closeCheckoutModal() {

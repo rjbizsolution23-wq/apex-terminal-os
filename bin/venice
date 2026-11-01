@@ -685,8 +685,17 @@ def browse_workspace_library():
                 subprocess.run(["ls", "-la", str(path)])
 
 def print_command_center_banner():
+    wl_file = WORKSPACE_ROOT / "whitelabel.json"
+    header_line = "APEX TERMINAL OS — VENICE SOVEREIGN COMMAND & EXECUTION CENTER"
+    if wl_file.exists():
+        try:
+            wl = json.loads(wl_file.read_text())
+            header_line = f"{wl.get('brand', 'APEX TERMINAL OS')} — {wl.get('tagline', 'SOVEREIGN COMMAND CENTER')}"
+        except Exception:
+            pass
+    header_padded = header_line[:68].ljust(68)
     print("\033[1;36m╔══════════════════════════════════════════════════════════════════════════════╗\033[0m")
-    print("\033[1;36m║\033[0m  🏛️  \033[1;37mAPEX TERMINAL OS — VENICE SOVEREIGN COMMAND & EXECUTION CENTER\033[0m           \033[1;36m║\033[0m")
+    print(f"\033[1;36m║\033[0m  🏛️  \033[1;37m{header_padded}\033[0m \033[1;36m║\033[0m")
     print("\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[1]\033[0m 🧠 \033[1;37mNatural-Language Auto-Router\033[0m   (Auto-picks best uncensored model)   \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[2]\033[0m 🔓 \033[1;37mObliterated Zero-Refusal\033[0m       (Red-team, exploit, 0% refusal v2)   \033[1;36m║\033[0m")

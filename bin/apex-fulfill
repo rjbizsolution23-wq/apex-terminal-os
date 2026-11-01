@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""
+🏛️ APEX TERMINAL OS — COMMERCIAL LICENSE GENERATOR & PACKAGE FULFILLMENT CLI
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+Generates deterministic, checksum-verified license keys per tier and outputs ready-to-send client fulfillment receipts.
+"""
+
+import sys
+import hashlib
+import time
+
+TIERS = {
+    "1": ("developer", "Developer Edition (Solo Operator)", "$197", "RJ-DEV", "packages/apex-terminal-os-developer-v2.0.zip"),
+    "developer": ("developer", "Developer Edition (Solo Operator)", "$197", "RJ-DEV", "packages/apex-terminal-os-developer-v2.0.zip"),
+    "dev": ("developer", "Developer Edition (Solo Operator)", "$197", "RJ-DEV", "packages/apex-terminal-os-developer-v2.0.zip"),
+    "2": ("sovereign", "Sovereign Full-Spectrum Suite (Pro)", "$497", "RJ-SOV", "packages/apex-terminal-os-sovereign-pro-v2.0.zip"),
+    "sovereign": ("sovereign", "Sovereign Full-Spectrum Suite (Pro)", "$497", "RJ-SOV", "packages/apex-terminal-os-sovereign-pro-v2.0.zip"),
+    "pro": ("sovereign", "Sovereign Full-Spectrum Suite (Pro)", "$497", "RJ-SOV", "packages/apex-terminal-os-sovereign-pro-v2.0.zip"),
+    "3": ("enterprise", "Enterprise Agency Fleet & White-Label", "$1,997", "RJ-ENT", "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip"),
+    "enterprise": ("enterprise", "Enterprise Agency Fleet & White-Label", "$1,997", "RJ-ENT", "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip"),
+    "ent": ("enterprise", "Enterprise Agency Fleet & White-Label", "$1,997", "RJ-ENT", "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip"),
+}
+
+def generate_license_key(prefix: str, email: str) -> str:
+    clean_email = email.strip().lower()
+    digest = hashlib.sha256(f"RJBS-APEX-2026:{prefix}:{clean_email}".encode("utf-8")).hexdigest().upper()
+    block1 = digest[:4]
+    block2 = digest[4:8]
+    # Deterministic check digit segment matching JS frontend validator:
+    # Sum of char codes of block1 % 97 formatted as 2 digits + 2 hex chars
+    chk = sum(ord(c) for c in block1) % 97
+    return f"{prefix}-{block1}-{block2}-{chk:02d}X9"
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print("""\033[1;36m🏛️ APEX TERMINAL OS — LICENSE & PACKAGE FULFILLMENT ENGINE\033[0m
+Usage:
+  apex-fulfill <tier: dev|pro|ent> [customer_email]
+
+Examples:
+  apex-fulfill dev buyer@gmail.com       -> Generates $197 Developer License + Package Link
+  apex-fulfill pro founder@agency.io     -> Generates $497 Sovereign Pro License + Package Link
+  apex-fulfill ent cto@enterprise.com    -> Generates $1,997 Enterprise White-Label License + Package Link
+""")
+        sys.exit(0)
+
+    tier_arg = sys.argv[1].lower().strip()
+    if tier_arg not in TIERS:
+        print(f"Unknown tier '{tier_arg}'. Choose: dev ($197), pro ($497), or ent ($1,997)")
+        sys.exit(1)
+
+    email = sys.argv[2] if len(sys.argv) > 2 else f"client-{int(time.time())}@rjbusinesssolutions.org"
+    slug, name, price, prefix, pkg_rel = TIERS[tier_arg]
+    license_key = generate_license_key(prefix, email)
+
+    print(f"""\033[1;36m==========================================================================\033[0m
+\033[1;32m✓ COMMERCIAL LICENSE GENERATED — RJ BUSINESS SOLUTIONS\033[0m
+\033[1;36m==========================================================================\033[0m
+  👤 Customer:      {email}
+  📦 Package Tier:  \033[1;33m{name} ({price})\033[0m
+  🔑 License Key:   \033[1;32m{license_key}\033[0m
+  📁 Local ZIP:     /Users/kalivibecoding/Downloads/Super-agents266/apex-terminal-os/{pkg_rel}
+  🌐 Web Download:  https://rjbizsolution23-wq.github.io/apex-terminal-os/{pkg_rel}
+  ⚡ CLI Installer: ./install/setup.sh --tier={slug} --key={license_key}
+\033[1;36m==========================================================================\033[0m""")
+
+if __name__ == "__main__":
+    main()

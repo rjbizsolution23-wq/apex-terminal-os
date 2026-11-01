@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""
+🏛️ APEX TERMINAL OS — ENTERPRISE WHITE-LABEL REBRANDING ENGINE
+Included exclusively in the Enterprise Agency Fleet & White-Label Edition ($1,997).
+Allows agencies to custom-brand the 12-Ability Startup Command Center, prompt title, and organization name.
+"""
+
+import sys
+import json
+from pathlib import Path
+
+CONFIG_PATH = Path.home() / ".apex-workspace/whitelabel.json"
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print("""\033[1;36m🏛️ APEX ENTERPRISE WHITE-LABEL ENGINE\033[0m
+Usage:
+  apex-whitelabel --brand "ACME CYBERSECURITY" --tagline "Autonomous Fleet OS"
+  apex-whitelabel --reset
+  apex-whitelabel --status
+""")
+        sys.exit(0)
+
+    if sys.argv[1] == "--reset":
+        if CONFIG_PATH.exists():
+            CONFIG_PATH.unlink()
+        print("\033[1;32m✓ Reverted to default RJ Business Solutions — Apex Terminal OS branding.\033[0m")
+        return
+
+    if sys.argv[1] == "--status":
+        if CONFIG_PATH.exists():
+            print(CONFIG_PATH.read_text())
+        else:
+            print("Default Branding: APEX TERMINAL OS — VENICE SOVEREIGN COMMAND & EXECUTION CENTER")
+        return
+
+    brand = "APEX TERMINAL OS"
+    tagline = "SOVEREIGN COMMAND & EXECUTION CENTER"
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--brand" and i + 1 < len(args):
+            brand = args[i + 1]
+            i += 2
+        elif args[i] == "--tagline" and i + 1 < len(args):
+            tagline = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps({"brand": brand, "tagline": tagline}, indent=2))
+    print(f"\033[1;32m✓ White-Label Branding Activated:\033[0m {brand} — {tagline}")
+
+if __name__ == "__main__":
+    main()
