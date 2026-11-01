@@ -1,0 +1,50 @@
+{
+  "product": "Apex Terminal OS v2.0",
+  "vendor": "RJ Business Solutions",
+  "publishable_key": "pk_live_51ShGVR1ol5unodB2ihigOFXRIToYaB2t8yzQxyXBdXlczWogfThagRZy08r9jk16E2b8W7HnbkomNlSFeSVwK11G00W09dlcrq",
+  "generated_at": "2026-11-01",
+  "tiers": {
+    "developer": {
+      "tier": "developer",
+      "name": "Apex Terminal OS v2.0 \u2014 Developer Edition",
+      "price_display": "$197.00 USD",
+      "amount_cents": 19700,
+      "product_id": "prod_VYDdIE4jCwSYkJ",
+      "price_id": "price_1UX7CD1ol5unodB2FUV6NK19",
+      "payment_link_id": "plink_1UX7CE1ol5unodB2EAN5YxnL",
+      "payment_link_url": "https://buy.stripe.com/7sY7sDbCI0fb49N8j7eEq35",
+      "redirect_delivery_url": "https://rjbizsolution23-wq.github.io/apex-terminal-os/?paid_tier=developer&unlock=RJ-DEV-2026&session_id={CHECKOUT_SESSION_ID}",
+      "zip_file": "packages/apex-terminal-os-developer-v2.0.zip",
+      "tar_file": "packages/apex-terminal-os-developer-v2.0.tar.gz",
+      "unlock_code": "RJ-DEV-2026"
+    },
+    "sovereign": {
+      "tier": "sovereign",
+      "name": "Apex Terminal OS v2.0 \u2014 Sovereign Full-Spectrum Suite",
+      "price_display": "$497.00 USD",
+      "amount_cents": 49700,
+      "product_id": "prod_VYDdbojipxaxeU",
+      "price_id": "price_1UX7CE1ol5unodB2U4I7T84m",
+      "payment_link_id": "plink_1UX7CF1ol5unodB2sRN75RXp",
+      "payment_link_url": "https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36",
+      "redirect_delivery_url": "https://rjbizsolution23-wq.github.io/apex-terminal-os/?paid_tier=sovereign&unlock=RJ-SOV-2026&session_id={CHECKOUT_SESSION_ID}",
+      "zip_file": "packages/apex-terminal-os-sovereign-pro-v2.0.zip",
+      "tar_file": "packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz",
+      "unlock_code": "RJ-SOV-2026"
+    },
+    "enterprise": {
+      "tier": "enterprise",
+      "name": "Apex Terminal OS v2.0 \u2014 Enterprise Agency Fleet & White-Label",
+      "price_display": "$1,997.00 USD",
+      "amount_cents": 199700,
+      "product_id": "prod_VYDdKFHvDKOkpk",
+      "price_id": "price_1UX7CF1ol5unodB20kZFJu5t",
+      "payment_link_id": "plink_1UX7CG1ol5unodB2kRujvfZV",
+      "payment_link_url": "https://buy.stripe.com/28E8wHeOU0fbdKnczneEq37",
+      "redirect_delivery_url": "https://rjbizsolution23-wq.github.io/apex-terminal-os/?paid_tier=enterprise&unlock=RJ-ENT-2026&session_id={CHECKOUT_SESSION_ID}",
+      "zip_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip",
+      "tar_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.tar.gz",
+      "unlock_code": "RJ-ENT-2026"
+    }
+  }
+}

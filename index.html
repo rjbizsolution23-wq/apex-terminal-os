@@ -588,12 +588,20 @@
             </ul>
           </div>
 
-          <button
-            onclick="openCheckoutModal('developer', 'Solo Operator — Developer Edition', '$197')"
-            class="mt-8 w-full py-3.5 px-5 rounded-xl border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-display font-bold text-sm transition"
-          >
-            Select Developer Edition ($197)
-          </button>
+          <div class="mt-8 space-y-2.5">
+            <a
+              href="https://buy.stripe.com/7sY7sDbCI0fb49N8j7eEq35"
+              class="block text-center w-full py-3.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-sm shadow transition"
+            >
+              💳 Pay with Stripe ($197) →
+            </a>
+            <button
+              onclick="openCheckoutModal('developer', 'Solo Operator — Developer Edition', '$197')"
+              class="w-full py-2.5 px-4 rounded-xl border border-blue-300 text-blue-700 hover:bg-blue-50 font-display font-semibold text-xs transition"
+            >
+              🔑 Enter License Key / Zelle / Wire
+            </button>
+          </div>
         </div>
 
         <!-- Tier 2: Pro Agency & Sovereign Edition (Featured) -->
@@ -627,12 +635,20 @@
             </ul>
           </div>
 
-          <button
-            onclick="openCheckoutModal('sovereign', 'Sovereign Full-Spectrum Suite (Pro)', '$497')"
-            class="mt-8 w-full py-4 px-5 rounded-xl rj-btn-gradient text-white font-display font-bold text-sm shadow-md"
-          >
-            Activate Sovereign Suite ($497) →
-          </button>
+          <div class="mt-8 space-y-2.5">
+            <a
+              href="https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36"
+              class="block text-center w-full py-4 px-5 rounded-xl rj-btn-gradient text-white font-display font-bold text-sm shadow-md"
+            >
+              💳 Pay with Stripe ($497) · Auto-Delivery →
+            </a>
+            <button
+              onclick="openCheckoutModal('sovereign', 'Sovereign Full-Spectrum Suite (Pro)', '$497')"
+              class="w-full py-2.5 px-4 rounded-xl border border-blue-300 text-blue-700 hover:bg-blue-50 font-display font-semibold text-xs transition"
+            >
+              🔑 Enter License Key / Zelle / Wire
+            </button>
+          </div>
         </div>
 
         <!-- Tier 3: Enterprise & White-Label -->
@@ -662,12 +678,20 @@
             </ul>
           </div>
 
-          <button
-            onclick="openCheckoutModal('enterprise', 'Enterprise Agency Fleet & White-Label License', '$1,997')"
-            class="mt-8 w-full py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-sm transition"
-          >
-            Deploy Enterprise Fleet ($1,997)
-          </button>
+          <div class="mt-8 space-y-2.5">
+            <a
+              href="https://buy.stripe.com/28E8wHeOU0fbdKnczneEq37"
+              class="block text-center w-full py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-sm transition shadow"
+            >
+              💳 Pay with Stripe ($1,997) →
+            </a>
+            <button
+              onclick="openCheckoutModal('enterprise', 'Enterprise Agency Fleet & White-Label License', '$1,997')"
+              class="w-full py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-display font-semibold text-xs transition"
+            >
+              🔑 Enter License Key / Zelle / Wire
+            </button>
+          </div>
         </div>
       </div>
 
@@ -762,10 +786,33 @@
         <span id="modal-pkg-badge" class="font-mono text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded">Package: apex-terminal-os-sovereign-pro-v2.0.zip</span>
       </div>
 
-      <!-- STEP 1: PAYMENT SETTLEMENT -->
+      <!-- STRIPE REDIRECT AUTO-VERIFICATION BANNER (Shown automatically after Stripe Checkout redirect) -->
+      <div id="stripe-verified-banner" class="hidden mt-4 bg-emerald-600 text-white rounded-xl p-4 shadow-md">
+        <div class="flex items-center justify-between">
+          <span class="font-display font-bold text-xs uppercase tracking-wider">✓ STRIPE PAYMENT VERIFIED · AUTO-DELIVERY ACTIVE</span>
+          <span id="stripe-session-badge" class="font-mono text-[10px] bg-emerald-800 px-2 py-0.5 rounded"></span>
+        </div>
+        <p class="text-xs mt-1.5 text-emerald-50">
+          Your payment has been confirmed. Your License Key <code id="stripe-assigned-key" class="font-mono font-bold underline"></code> has been applied below and your package download has started automatically.
+        </p>
+      </div>
+
+      <!-- STEP 1: PAYMENT SETTLEMENT (STRIPE + ZELLE + WIRE) -->
       <div class="mt-5 space-y-3 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
-        <div class="font-display font-bold uppercase text-slate-500">Step 1: Complete Settlement</div>
-        <p>Send exact license total via <strong>Zelle</strong> to <code class="text-blue-700 font-bold">rjbizsolution23@gmail.com</code> or Domestic Wire (Routing <code class="text-blue-700 font-bold">121000248</code> · Wells Fargo). Upon payment confirmation, you receive your tier-specific License Key (`RJ-DEV-...`, `RJ-SOV-...`, or `RJ-ENT-...`).</p>
+        <div class="flex items-center justify-between">
+          <div class="font-display font-bold uppercase text-slate-500">Step 1: Complete Instant Settlement</div>
+          <span class="text-[11px] font-semibold text-blue-600">Automatic Redirect &amp; Package Unlock</span>
+        </div>
+        <a
+          id="modal-stripe-btn"
+          href="https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36"
+          class="block text-center w-full py-3 px-4 rounded-lg rj-btn-gradient text-white font-display font-bold text-xs shadow transition"
+        >
+          💳 Pay Instantly via Stripe Checkout (Card / Apple Pay) →
+        </a>
+        <p class="text-[11px] text-slate-500 pt-1">
+          Or settle via <strong>Zelle</strong> (<code class="text-blue-700 font-bold">rjbizsolution23@gmail.com</code>) or Domestic Wire (Routing <code class="text-blue-700 font-bold">121000248</code> · Wells Fargo) to receive your tier-specific License Key (<code class="font-mono">RJ-DEV-...</code>, <code class="font-mono">RJ-SOV-...</code>, or <code class="font-mono">RJ-ENT-...</code>).
+        </p>
       </div>
 
       <!-- STEP 2: ENTER LICENSE KEY TO UNLOCK EXACT PACKAGE -->
@@ -925,6 +972,9 @@
     const packageCatalog = {
       developer: {
         name: "Solo Operator — Developer Edition ($197)",
+        price: "$197",
+        stripeUrl: "https://buy.stripe.com/7sY7sDbCI0fb49N8j7eEq35",
+        defaultKey: "RJ-DEV-2026",
         zip: "packages/apex-terminal-os-developer-v2.0.zip",
         tar: "packages/apex-terminal-os-developer-v2.0.tar.gz",
         folder: "apex-terminal-os-developer-v2.0",
@@ -932,6 +982,9 @@
       },
       sovereign: {
         name: "Sovereign Full-Spectrum Suite ($497)",
+        price: "$497",
+        stripeUrl: "https://buy.stripe.com/fZu4gr0Y42nj21FdDreEq36",
+        defaultKey: "RJ-SOV-2026",
         zip: "packages/apex-terminal-os-sovereign-pro-v2.0.zip",
         tar: "packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz",
         folder: "apex-terminal-os-sovereign-pro-v2.0",
@@ -939,6 +992,9 @@
       },
       enterprise: {
         name: "Enterprise Agency Fleet & White-Label ($1,997)",
+        price: "$1,997",
+        stripeUrl: "https://buy.stripe.com/28E8wHeOU0fbdKnczneEq37",
+        defaultKey: "RJ-ENT-2026",
         zip: "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip",
         tar: "packages/apex-terminal-os-enterprise-whitelabel-v2.0.tar.gz",
         folder: "apex-terminal-os-enterprise-whitelabel-v2.0",
@@ -950,10 +1006,16 @@
 
     function openCheckoutModal(tierKey, title, price) {
       selectedTierKey = tierKey || "sovereign";
-      const pkg = packageCatalog[selectedTierKey];
-      document.getElementById('modal-tier-title').textContent = title;
-      document.getElementById('modal-tier-price').textContent = price;
+      const pkg = packageCatalog[selectedTierKey] || packageCatalog.sovereign;
+      document.getElementById('modal-tier-title').textContent = title || pkg.name;
+      document.getElementById('modal-tier-price').textContent = price || pkg.price;
       document.getElementById('modal-pkg-badge').textContent = "Package: " + pkg.zip.split('/')[1];
+      const stripeBtn = document.getElementById('modal-stripe-btn');
+      if (stripeBtn) {
+        stripeBtn.href = pkg.stripeUrl;
+        stripeBtn.textContent = `💳 Pay Instantly via Stripe Checkout (${pkg.price}) →`;
+      }
+      document.getElementById('stripe-verified-banner').classList.add('hidden');
       document.getElementById('license-key-input').value = "";
       document.getElementById('license-error-msg').classList.add('hidden');
       document.getElementById('unlocked-package-vault').classList.add('hidden');
@@ -1020,6 +1082,49 @@
 
     // Initialize simulator with Ability [1]
     simulateAbility(1);
+
+    // Automatic Post-Payment Stripe Redirect Package Delivery
+    (function handleStripeRedirectDelivery() {
+      const params = new URLSearchParams(window.location.search);
+      const paidTier = (params.get("paid_tier") || "").toLowerCase();
+      const unlockParam = params.get("unlock") || "";
+      const sessionId = params.get("session_id") || "";
+
+      if (paidTier && packageCatalog[paidTier]) {
+        const pkg = packageCatalog[paidTier];
+        const appliedKey = unlockParam || pkg.defaultKey;
+        openCheckoutModal(paidTier, pkg.name, pkg.price);
+
+        const banner = document.getElementById("stripe-verified-banner");
+        const sessionBadge = document.getElementById("stripe-session-badge");
+        const keyBadge = document.getElementById("stripe-assigned-key");
+        if (banner) banner.classList.remove("hidden");
+        if (sessionBadge) {
+          sessionBadge.textContent = sessionId && !sessionId.includes("CHECKOUT_SESSION_ID")
+            ? "Session: " + sessionId.slice(0, 18) + "..."
+            : "Stripe Verified";
+        }
+        if (keyBadge) keyBadge.textContent = appliedKey;
+
+        const inputEl = document.getElementById("license-key-input");
+        if (inputEl) inputEl.value = appliedKey;
+        verifyAndDeliverPackage();
+
+        // Automatically trigger the browser download of the purchased .zip package
+        setTimeout(() => {
+          const dl = document.getElementById("download-zip-link");
+          if (dl) dl.click();
+        }, 600);
+      } else if (unlockParam) {
+        const detectedTier = validateKeyTier(unlockParam);
+        if (detectedTier && packageCatalog[detectedTier]) {
+          const pkg = packageCatalog[detectedTier];
+          openCheckoutModal(detectedTier, pkg.name, pkg.price);
+          document.getElementById("license-key-input").value = unlockParam;
+          verifyAndDeliverPackage();
+        }
+      }
+    })();
   </script>
 </body>
 </html>

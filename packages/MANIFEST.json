@@ -7,10 +7,10 @@
       "master_unlock_code": "RJ-DEV-2026",
       "zip_file": "packages/apex-terminal-os-developer-v2.0.zip",
       "zip_size_bytes": 34465,
-      "zip_sha256": "f129a28fd7613ed6f9a6a66f4df7fb36672671a5b881370eef678a52e749dd5f",
+      "zip_sha256": "75b4a5da357a75f5f07beee535d2fe1a7d31a347829632692ab0e192b768e75e",
       "tar_file": "packages/apex-terminal-os-developer-v2.0.tar.gz",
-      "tar_size_bytes": 29712,
-      "tar_sha256": "5180177b14aeb7b6bf4c51bb98c6284c000cd9b651f036aa0a4427d9017faceb"
+      "tar_size_bytes": 29709,
+      "tar_sha256": "b29b152556fd85eef3548999b0bf2e9ab280b62c3f6b9d068ddf85a88523d03c"
     },
     "sovereign": {
       "tier": "sovereign",
@@ -18,21 +18,21 @@
       "master_unlock_code": "RJ-SOV-2026",
       "zip_file": "packages/apex-terminal-os-sovereign-pro-v2.0.zip",
       "zip_size_bytes": 36116,
-      "zip_sha256": "73f1ce77c28498b3ecf3e507e0c43efe65e71317446fad19b1bc12e5b7d134f4",
+      "zip_sha256": "4848b4d341b58dd45457b697e0bf1da81c2c41cfc3176e00b1bba1555747324e",
       "tar_file": "packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz",
-      "tar_size_bytes": 30664,
-      "tar_sha256": "011f836dd255ced5e34db26059c25f755196e0893b4250d268e774cab8d742cc"
+      "tar_size_bytes": 30663,
+      "tar_sha256": "f8334dd8bad554fcc3fef8d55cce7ba126ec2859f51fb8d400dab23508c5e28f"
     },
     "enterprise": {
       "tier": "enterprise",
       "price": "$1,997",
       "master_unlock_code": "RJ-ENT-2026",
       "zip_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip",
-      "zip_size_bytes": 55300,
-      "zip_sha256": "6706d0e65d2e052effe30a93da5ad0b7c81a6028839bd499f4ed9707f80bed1c",
+      "zip_size_bytes": 56577,
+      "zip_sha256": "93c739998672d3a79138ca8fbd8b381a2a47de9c66c1364d71f2e6e5a479207c",
       "tar_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.tar.gz",
-      "tar_size_bytes": 47541,
-      "tar_sha256": "10b2b14c4c842d6d3258919789097094bbafdd6e333177a78f6e7849248f5291"
+      "tar_size_bytes": 48830,
+      "tar_sha256": "fa7f16bd7a40f609a0a126b311f8e81180f93d3631f4b3d5c3ac9cab5946f399"
     }
   }
 }
