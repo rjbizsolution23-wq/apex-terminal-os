@@ -1,0 +1,25 @@
+{
+  "device_id": "iphone-14-rick-jefferson",
+  "owner": "Rick Jefferson",
+  "organization": "RJ Business Solutions",
+  "model": "iPhone 14",
+  "os_version": "iOS 26.5.2",
+  "phone_number": "+1 (945) 308-8003",
+  "serial_number": "LJ6V09JW26",
+  "imei": "35 125318 131177 0",
+  "imei2": "35 125318 170558 3",
+  "status": "PAIRED_AND_TRUSTED",
+  "trust_level": "SOVEREIGN_ROOT_COMMANDER",
+  "registered_at": "2026-11-02T20:20:00Z",
+  "endpoint": "https://apex.empirecontentstudios.com",
+  "auth_pin": "408100",
+  "remote_token": "apex_live_408100_lj6v09jw26",
+  "allowed_actions": [
+    "voice_task",
+    "terminal_access",
+    "git_operations",
+    "system_health",
+    "parallel_builds",
+    "siri_shortcuts"
+  ]
+}
