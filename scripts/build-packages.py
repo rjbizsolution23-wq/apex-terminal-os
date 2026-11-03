@@ -59,6 +59,8 @@ def build_all():
     shutil.copy2(REPO_ROOT / "bin/venice", dev_dir / "bin/venice")
     shutil.copy2(REPO_ROOT / "bin/apex-agent", dev_dir / "bin/apex-agent")
     shutil.copy2(REPO_ROOT / "bin/apex-sms", dev_dir / "bin/apex-sms")
+    shutil.copy2(REPO_ROOT / "bin/apex-messages", dev_dir / "bin/apex-messages")
+    shutil.copy2(REPO_ROOT / "bin/apex-photos", dev_dir / "bin/apex-photos")
     shutil.copy2(REPO_ROOT / "bin/apex-remote", dev_dir / "bin/apex-remote")
     shutil.copy2(REPO_ROOT / "bin/apex-voice", dev_dir / "bin/apex-voice")
     shutil.copy2(REPO_ROOT / "bin/apex-rag", dev_dir / "bin/apex-rag")

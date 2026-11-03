@@ -91,7 +91,7 @@ A state-of-the-art agentic tool-use loop (read &rarr; edit &rarr; test &rarr; re
 | `axswarm "task"` | Subagent Swarm | Decomposes task into concurrent worker agents under MASS barrier discipline (`arXiv:2610.12176`). |
 | `ax --model ollama "task"` | $0 Local Offline Mode | Runs 100% locally with zero API costs and zero rate limits. |
 
-#### Complete 15-Tool Agent Arsenal
+#### Complete 17-Tool Agent Arsenal
 1. `read_file` — High-speed file inspection with byte offset and slice limits.
 2. `write_file` — Atomic file synthesis with automatic parent directory creation.
 3. `edit_file` — Surgical exact string replacement with multi-occurrence safety warnings.
@@ -107,6 +107,8 @@ A state-of-the-art agentic tool-use loop (read &rarr; edit &rarr; test &rarr; re
 13. `semantic_search_memory` — BM25/keyword retrieval over past sessions and cross-project memories.
 14. `search_contacts` — Live query against macOS `Contacts.app` to resolve names and phone numbers.
 15. `send_sms` — Dispatches SMS and iMessage texts directly from your mobile number via `Messages.app`.
+16. `read_messages` — Programmatically reads recent incoming SMS & iMessages, searches conversation threads, detects phishing/spam, and audits bloated attachments.
+17. `manage_photos` — Scans loose images, finds duplicates (freeing GBs), purges old screenshots (>14d) and screen recordings (>20MB) safely to Trash, organizes by YYYY-MM, and queries Apple Photos library (24k+ photos, 199 albums).
 
 ---
 
@@ -134,7 +136,70 @@ text
 
 ---
 
-### 3. `apex-remote` — Encrypted iPhone 14 & Web Command Center (`axr`)
+### 3. `apex-messages` — Messages & Text Intelligence Suite (`texts`, `msgs`, `axm`)
+Inspect, search, filter, and audit your real-time SMS and iMessages directly from terminal or remote agent:
+
+```zsh
+# Read the 15 most recent incoming/outgoing messages
+texts
+# Or:
+apex-messages --recent 15
+
+# View active conversation threads
+texts --conversations
+
+# View chronological conversation history with a contact
+texts --contact "Jackie"
+texts --contact "+19453088003"
+
+# Substring search across all 19,221 messages
+texts --search "wire transfer"
+
+# Scan for bank phishing scams, recruiter bots, and spam texts
+texts --spam
+
+# Audit bloated attachments consuming disk space
+texts --large-attachments
+
+# Safely move attachments > 50MB to ~/.Trash (reclaims GBs of disk)
+texts --clean-attachments 50 --execute
+```
+
+---
+
+### 4. `apex-photos` — Image, Photo & Storage Optimizer (`photos`, `axph`)
+High-speed two-pass image scanner, deduplication engine, and Apple Photos library bridge:
+
+```zsh
+# Scan Desktop & Downloads for images, screenshots, and videos
+photos
+# Or:
+apex-photos --scan
+
+# Fast two-pass duplicate detection (size grouping + SHA-256 fingerprinting)
+apex-photos --duplicates
+
+# Move duplicate copies to ~/.Trash (preserves earliest original copy)
+apex-photos --clean-duplicates --execute
+
+# Clean disposable screenshots older than 14 days (frees ~462 MB)
+apex-photos --clean-screenshots --days 14 --execute
+
+# Clean bloated screen recordings (>20MB, >14d) while preserving music videos (frees ~3.88 GB)
+apex-photos --clean-recordings --days 14 --min-mb 20 --execute
+
+# Automatically organize loose Downloads into YYYY-MM directory structure
+apex-photos --organize ~/Downloads --execute
+
+# Direct read-only query of Apple Photos Library (24,194 assets, 199 albums)
+apex-photos --photos-app
+apex-photos --albums
+apex-photos --album "Rick"
+```
+
+---
+
+### 5. `apex-remote` — Encrypted iPhone 14 & Web Command Center (`axr`)
 Access and drive your MacBook remotely from anywhere in the world over an encrypted Cloudflare Zero Trust tunnel.
 
 ```zsh

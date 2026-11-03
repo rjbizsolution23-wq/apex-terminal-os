@@ -342,4 +342,67 @@ apex-voice
 
 ---
 
+## 📸 11. APEX-PHOTOS & APEX-MESSAGES (IMAGE, PHOTO & TEXT INTELLIGENCE SUITE)
+
+### Image & Photo Intelligence (`apex-photos` / `photos`)
+```zsh
+# Fast scan Desktop & Downloads for images, screenshots, and video recordings
+photos
+# Or:
+apex-photos --scan
+
+# Scan for duplicate images and calculate wasted disk space
+apex-photos --duplicates
+
+# Safely clean duplicate images (keeps earliest original, moves copies to ~/.Trash)
+apex-photos --clean-duplicates --execute
+
+# Find and clean disposable screenshots older than 14 days
+apex-photos --clean-screenshots --days 14 --execute
+
+# Find and clean bloated screen recordings (>20MB) older than 14 days
+apex-photos --clean-recordings --days 14 --min-mb 20 --execute
+
+# Automatically organize loose images in Downloads into YYYY-MM folders
+apex-photos --organize ~/Downloads --execute
+
+# Audit Apple Photos Library (24,194 photos, 199 albums)
+apex-photos --photos-app
+
+# List all 199 Apple Photos albums with exact item counts
+apex-photos --albums
+
+# Inspect photos inside a specific album (e.g. "Rick", "Credit ID")
+apex-photos --album "Rick"
+```
+
+### Text & Message Intelligence (`apex-messages` / `texts` / `msgs`)
+```zsh
+# Read the latest 15 SMS & iMessages from macOS chat.db
+texts
+# Or:
+apex-messages --recent 15
+
+# View active conversation threads
+texts --conversations
+
+# View full conversation thread with a specific contact or phone
+texts --contact "Jackie"
+texts --contact "+19453088003"
+
+# Search all 19,221 messages for a keyword
+texts --search "invoice"
+
+# Scan for phishing, scams, and unsolicited spam texts
+texts --spam
+
+# Audit oversized attachments consuming disk space
+texts --large-attachments
+
+# Safely move attachments > 50MB to ~/.Trash
+texts --clean-attachments 50 --execute
+```
+
+---
+
 © 2026 RJ Business Solutions | All Rights Reserved.

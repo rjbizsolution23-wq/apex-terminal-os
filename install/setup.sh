@@ -53,11 +53,11 @@ cp -r "$REPO_DIR/config/apex-layout.kdl" "$HOME/.config/arsenal/apex-layout.kdl"
 cp -r "$REPO_DIR/config/apex-seatbelt.sb" "$HOME/.config/arsenal/apex-seatbelt.sb" 2>/dev/null || true
 cp -r "$REPO_DIR/config/litellm_config.yaml" "$HOME/.config/arsenal/litellm_config.yaml" 2>/dev/null || true
 
-# Install core binaries (apex + venice sovereign OS + RAG + MCP + Keygen + Whitelabel + Agent + Remote + Voice + SMS)
+# Install core binaries (apex + venice sovereign OS + RAG + MCP + Keygen + Whitelabel + Agent + Remote + Voice + SMS + Messages + Photos)
 cp "$REPO_DIR/bin/apex" "$HOME/.local/bin/apex"
 cp "$REPO_DIR/bin/venice" "$HOME/.local/bin/venice"
 chmod +x "$HOME/.local/bin/apex" "$HOME/.local/bin/venice"
-for extra_bin in apex-agent apex-remote apex-voice apex-sms apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
+for extra_bin in apex-agent apex-remote apex-voice apex-sms apex-messages apex-photos apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
     if [ -f "$REPO_DIR/bin/$extra_bin" ]; then
         cp "$REPO_DIR/bin/$extra_bin" "$HOME/.local/bin/$extra_bin"
         chmod +x "$HOME/.local/bin/$extra_bin"
@@ -67,6 +67,9 @@ ln -sf "$HOME/.local/bin/apex-whitelabel" "$HOME/.local/bin/apex-monetize" 2>/de
 ln -sf "$HOME/.local/bin/apex-sms" "$HOME/.local/bin/text" 2>/dev/null || true
 ln -sf "$HOME/.local/bin/apex-sms" "$HOME/.local/bin/sms" 2>/dev/null || true
 ln -sf "$HOME/.local/bin/apex-sms" "$HOME/.local/bin/axs" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-messages" "$HOME/.local/bin/texts" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-messages" "$HOME/.local/bin/msgs" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-photos" "$HOME/.local/bin/photos" 2>/dev/null || true
 ln -sf "$HOME/.local/bin/apex-remote" "$HOME/.local/bin/axr" 2>/dev/null || true
 ln -sf "$HOME/.local/bin/apex-voice" "$HOME/.local/bin/axv" 2>/dev/null || true
 

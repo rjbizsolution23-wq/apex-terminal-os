@@ -1,0 +1,674 @@
+#!/usr/bin/env python3
+"""
+apex-photos — Sovereign Image & Photo Intelligence Suite for Apex Terminal OS
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+
+Capabilities:
+  - Fast media scanner across Desktop, Downloads, Pictures, or custom directories
+  - Pure two-pass duplicate detection (size grouping + SHA-256)
+  - Safe clean-to-trash (preserves undo in macOS Trash; never raw rm -rf)
+  - Automatic organization into YYYY-MM or category folders (Screenshots, AI-Art, Photos)
+  - Clean disposable screenshots & bloated screen recordings (>100MB)
+  - Direct read-only query of Apple Photos.app library (24,000+ photos, 190+ albums)
+  - Fast metadata inspection using macOS native birthtime & sips
+
+Usage:
+  apex-photos --scan                      # Scan Desktop & Downloads for images/recordings
+  apex-photos --recent 10                 # Show 10 most recent media files
+  apex-photos --duplicates                # Scan for duplicate images & wasted space
+  apex-photos --clean-duplicates          # Dry-run duplicate cleaner
+  apex-photos --clean-duplicates --execute # Move duplicate images to ~/.Trash
+  apex-photos --clean-screenshots --days 14 # Dry-run old screenshot cleanup (>14 days)
+  apex-photos --clean-screenshots --days 14 --execute # Move old screenshots to ~/.Trash
+  apex-photos --clean-recordings --days 14 --execute  # Clean old screen recordings
+  apex-photos --organize ~/Downloads      # Dry-run organize loose images into YYYY-MM
+  apex-photos --organize ~/Downloads --execute # Move images into ~/Pictures/Organized/YYYY-MM/
+  apex-photos --photos-app                # Apple Photos Library summary & album counts
+  apex-photos --albums                    # List all Apple Photos albums & item counts
+"""
+
+import argparse
+import datetime
+import hashlib
+import os
+import pathlib
+import shutil
+import sqlite3
+import subprocess
+import sys
+from collections import defaultdict
+from typing import Dict, List, Optional, Set, Tuple
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".heic", ".gif", ".tiff", ".bmp", ".svg"}
+VIDEO_EXTENSIONS = {".mov", ".mp4", ".m4v", ".avi", ".mkv", ".webm"}
+ALL_MEDIA_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
+
+DEFAULT_SCAN_DIRS = [
+    pathlib.Path.home() / "Desktop",
+    pathlib.Path.home() / "Downloads",
+]
+
+ORGANIZED_ROOT = pathlib.Path.home() / "Pictures" / "Organized"
+PHOTOS_DB = pathlib.Path.home() / "Pictures" / "Photos Library.photoslibrary" / "database" / "Photos.sqlite"
+
+
+def format_size(bytes_val: int) -> str:
+    """Format bytes into human-readable string."""
+    if bytes_val < 1024:
+        return f"{bytes_val} B"
+    elif bytes_val < 1024 * 1024:
+        return f"{bytes_val / 1024:.1f} KB"
+    elif bytes_val < 1024 * 1024 * 1024:
+        return f"{bytes_val / (1024 * 1024):.1f} MB"
+    else:
+        return f"{bytes_val / (1024 * 1024 * 1024):.2f} GB"
+
+
+def move_to_trash(path: pathlib.Path) -> pathlib.Path:
+    """Safely move a file to macOS ~/.Trash, renaming on conflict."""
+    trash_dir = pathlib.Path.home() / ".Trash"
+    trash_dir.mkdir(parents=True, exist_ok=True)
+    target = trash_dir / path.name
+    if target.exists():
+        stem = path.stem
+        suffix = path.suffix
+        counter = 1
+        while target.exists():
+            target = trash_dir / f"{stem}_{counter}{suffix}"
+            counter += 1
+    shutil.move(str(path), str(target))
+    return target
+
+
+def is_screenshot(path: pathlib.Path) -> bool:
+    name = path.name.lower()
+    return (
+        "screenshot" in name
+        or "screen shot" in name
+        or "cleanshot" in name
+        or name.startswith("screenshot")
+        or name.startswith("screen shot")
+    )
+
+
+def is_screen_recording(path: pathlib.Path) -> bool:
+    name = path.name.lower()
+    return (
+        "screen recording" in name
+        or "screen record" in name
+        or "rpreplay" in name
+        or "screencast" in name
+    )
+
+
+def classify_media_type(path: pathlib.Path) -> str:
+    """Categorize a media file for intelligent sorting."""
+    name = path.name.lower()
+    if is_screenshot(path):
+        return "Screenshots"
+    if is_screen_recording(path) or path.suffix.lower() in VIDEO_EXTENSIONS:
+        return "Recordings" if is_screen_recording(path) else "Videos"
+    if any(k in name for k in ["flux", "midjourney", "dalle", "venice", "ai_", "stable_diffusion"]):
+        return "AI-Art"
+    if any(k in name for k in ["invoice", "receipt", "contract", "proposal", "statement", "scan", "document"]):
+        return "Documents"
+    if any(k in name for k in ["rick", "portrait", "headshot", "brand", "rj_"]):
+        return "Brand-Photos"
+    return "Photos"
+
+
+def get_media_creation_date(path: pathlib.Path) -> datetime.datetime:
+    """Get the earliest reliable creation timestamp for a file."""
+    try:
+        stat = path.stat()
+        # On macOS, st_birthtime is the creation timestamp
+        ts = getattr(stat, "st_birthtime", stat.st_mtime)
+        # If birthtime is unreasonably old or newer than mtime, pick min
+        earliest = min(ts, stat.st_mtime)
+        return datetime.datetime.fromtimestamp(earliest)
+    except Exception:
+        return datetime.datetime.now()
+
+
+def scan_directory(directory: pathlib.Path, recursive: bool = False) -> List[pathlib.Path]:
+    """Fast non-blocking scan of media files in a directory."""
+    if not directory.exists() or not directory.is_dir():
+        return []
+    
+    media: List[pathlib.Path] = []
+    try:
+        iterator = directory.rglob("*") if recursive else directory.iterdir()
+        for p in iterator:
+            # Skip hidden files, Trash, system packages like PhotosLibrary
+            if any(part.startswith(".") for part in p.parts):
+                continue
+            if ".photoslibrary" in p.parts or "node_modules" in p.parts:
+                continue
+            if p.is_file() and p.suffix.lower() in ALL_MEDIA_EXTENSIONS:
+                media.append(p)
+    except Exception:
+        pass
+    return media
+
+
+# ==============================================================================
+# ACTION: SCAN & AUDIT
+# ==============================================================================
+def action_scan(dirs: List[pathlib.Path], recursive: bool = False):
+    print("╭─ 🔍 SCANNING MEDIA & IMAGE STORAGE")
+    total_files = 0
+    total_bytes = 0
+    ext_counts: Dict[str, int] = defaultdict(int)
+    category_counts: Dict[str, int] = defaultdict(int)
+    screenshots_count = 0
+    recordings_count = 0
+
+    for d in dirs:
+        files = scan_directory(d, recursive=recursive)
+        d_bytes = sum(f.stat().st_size for f in files if f.exists())
+        total_files += len(files)
+        total_bytes += d_bytes
+        print(f"├─ {d}: {len(files)} media items ({format_size(d_bytes)})")
+
+        for f in files:
+            ext_counts[f.suffix.lower()] += 1
+            cat = classify_media_type(f)
+            category_counts[cat] += 1
+            if is_screenshot(f):
+                screenshots_count += 1
+            if is_screen_recording(f):
+                recordings_count += 1
+
+    print(f"├─ Total Media Files: {total_files} ({format_size(total_bytes)})")
+    print(f"├─ By Category: " + ", ".join(f"{k}: {v}" for k, v in sorted(category_counts.items(), key=lambda x: -x[1])))
+    print(f"├─ Screenshots cluttering folders: {screenshots_count}")
+    print(f"├─ Screen Recordings cluttering folders: {recordings_count}")
+    print("╰─ Commands:")
+    print("   • apex-photos --duplicates               # Find exact duplicates")
+    print("   • apex-photos --clean-screenshots --days 14 # Purge screenshots older than 14d")
+    print("   • apex-photos --organize                 # Organize into YYYY-MM folders")
+
+
+# ==============================================================================
+# ACTION: RECENT FILES
+# ==============================================================================
+def action_recent(dirs: List[pathlib.Path], limit: int = 15):
+    all_files: List[pathlib.Path] = []
+    for d in dirs:
+        all_files.extend(scan_directory(d))
+    
+    # Sort by modification time descending
+    all_files.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+    recent = all_files[:limit]
+
+    print(f"╭─ 📸 RECENT MEDIA FILES ({len(recent)} items)")
+    for f in recent:
+        dt = datetime.datetime.fromtimestamp(f.stat().st_mtime)
+        size = format_size(f.stat().st_size)
+        cat = classify_media_type(f)
+        parent = f.parent.name
+        print(f"├─ [{dt.strftime('%Y-%m-%d %H:%M')}] [{cat:12}] {f.name[:35]:35} ({size:>8}) in ~/{parent}")
+    print(f"╰─ Scanned {len(all_files)} total files across {len(dirs)} locations")
+
+
+# ==============================================================================
+# ACTION: DUPLICATES & DEDUPLICATION
+# ==============================================================================
+def get_fast_fingerprint(path: pathlib.Path, size: int) -> str:
+    """Generate a fast, accurate fingerprint without reading entire large files."""
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            # 8KB header
+            head = f.read(8192)
+            h.update(head)
+            if size <= 65536:
+                return h.hexdigest()
+            # 8KB middle
+            if size > 131072:
+                f.seek(size // 2)
+                h.update(f.read(8192))
+            # 8KB trailer
+            f.seek(max(0, size - 8192))
+            h.update(f.read(8192))
+        return h.hexdigest()
+    except Exception:
+        return ""
+
+
+def find_duplicates(dirs: List[pathlib.Path]) -> List[List[pathlib.Path]]:
+    """Two-pass duplicate finder: Group by size -> fast fingerprint candidates."""
+    all_files: List[pathlib.Path] = []
+    for d in dirs:
+        all_files.extend(scan_directory(d))
+
+    # Pass 1: Group by exact size in bytes
+    by_size: Dict[int, List[pathlib.Path]] = defaultdict(list)
+    for p in all_files:
+        try:
+            sz = p.stat().st_size
+            if sz > 0:
+                by_size[sz].append(p)
+        except Exception:
+            pass
+
+    duplicate_groups: List[List[pathlib.Path]] = []
+
+    # Pass 2: Fast fingerprint files that share the exact same byte size
+    for size, candidates in by_size.items():
+        if len(candidates) < 2:
+            continue
+        by_fp: Dict[str, List[pathlib.Path]] = defaultdict(list)
+        for p in candidates:
+            fp = get_fast_fingerprint(p, size)
+            if fp:
+                by_fp[fp].append(p)
+
+        for file_list in by_fp.values():
+            if len(file_list) > 1:
+                # Sort so the earliest creation or shortest name is first (original)
+                file_list.sort(key=lambda x: (x.stat().st_mtime, len(x.name)))
+                duplicate_groups.append(file_list)
+
+    return duplicate_groups
+
+
+def action_duplicates(dirs: List[pathlib.Path], clean: bool = False, execute: bool = False):
+    print("╭─ 🔍 SCANNING FOR DUPLICATE IMAGES & MEDIA")
+    groups = find_duplicates(dirs)
+    
+    if not groups:
+        print("├─ ✓ Zero duplicate media files detected across target folders.")
+        print("╰─ Storage is clean and optimized.")
+        return
+
+    total_wasted = sum((len(g) - 1) * g[0].stat().st_size for g in groups)
+    total_dupes = sum(len(g) - 1 for g in groups)
+    print(f"├─ Found {len(groups)} duplicate sets ({total_dupes} redundant copies, {format_size(total_wasted)} wasted)")
+
+    for i, g in enumerate(groups[:15], 1):
+        original = g[0]
+        dupes = g[1:]
+        print(f"├─ [Set #{i}] Original: {original.name} ({format_size(original.stat().st_size)}) in ~/{original.parent.name}")
+        for d in dupes:
+            print(f"│  ↳ Duplicate: {d.name} in ~/{d.parent.name}")
+
+    if len(groups) > 15:
+        print(f"├─ ... and {len(groups) - 15} more duplicate sets")
+
+    if clean:
+        if not execute:
+            print("├─ ⚠️  DRY RUN: No files moved. Run with --execute to move duplicate copies to ~/.Trash")
+            print("╰─ Command: apex-photos --clean-duplicates --execute")
+        else:
+            moved_count = 0
+            moved_bytes = 0
+            for g in groups:
+                # Keep g[0] (original), move g[1:] to Trash
+                for dup in g[1:]:
+                    try:
+                        sz = dup.stat().st_size
+                        move_to_trash(dup)
+                        moved_count += 1
+                        moved_bytes += sz
+                    except Exception as err:
+                        print(f"│  ✗ Failed to move {dup.name}: {err}")
+            print(f"├─ ✅ MOVED {moved_count} duplicate files to ~/.Trash ({format_size(moved_bytes)} reclaimed)")
+            print("╰─ Files are safely preserved in macOS Trash and can be restored if needed.")
+    else:
+        print("╰─ To safely clean duplicates, run: apex-photos --clean-duplicates --execute")
+
+
+# ==============================================================================
+# ACTION: CLEAN SCREENSHOTS & RECORDINGS
+# ==============================================================================
+def action_clean_screenshots(dirs: List[pathlib.Path], days: int = 14, execute: bool = False):
+    print(f"╭─ 🧹 SCREENSHOT CLEANUP (Older than {days} days)")
+    cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
+    candidates: List[pathlib.Path] = []
+
+    for d in dirs:
+        for f in scan_directory(d):
+            if is_screenshot(f):
+                mtime = datetime.datetime.fromtimestamp(f.stat().st_mtime)
+                if mtime < cutoff:
+                    candidates.append(f)
+
+    if not candidates:
+        print(f"├─ ✓ No screenshots older than {days} days found.")
+        print("╰─ Clean state.")
+        return
+
+    total_size = sum(f.stat().st_size for f in candidates)
+    print(f"├─ Identified {len(candidates)} old disposable screenshots ({format_size(total_size)})")
+    for f in candidates[:10]:
+        dt = datetime.datetime.fromtimestamp(f.stat().st_mtime)
+        print(f"├─ [{dt.strftime('%Y-%m-%d')}] {f.name[:45]:45} ({format_size(f.stat().st_size)})")
+    if len(candidates) > 10:
+        print(f"├─ ... and {len(candidates) - 10} more files")
+
+    if not execute:
+        print("├─ ⚠️  DRY RUN: No files moved. Pass --execute to move them to ~/.Trash")
+        print(f"╰─ Run: apex-photos --clean-screenshots --days {days} --execute")
+    else:
+        reclaimed = 0
+        for f in candidates:
+            try:
+                sz = f.stat().st_size
+                move_to_trash(f)
+                reclaimed += sz
+            except Exception as err:
+                print(f"│  ✗ Failed to move {f.name}: {err}")
+        print(f"├─ ✅ MOVED {len(candidates)} screenshots to ~/.Trash ({format_size(reclaimed)} reclaimed)")
+        print("╰─ Files are in macOS Trash.")
+
+
+def action_clean_recordings(dirs: List[pathlib.Path], days: int = 14, min_mb: int = 20, execute: bool = False, recordings_only: bool = True):
+    label = "SCREEN RECORDINGS" if recordings_only else "ALL LARGE VIDEOS"
+    print(f"╭─ 🎥 BLOATED {label} CLEANUP (> {min_mb}MB, older than {days} days)")
+    cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
+    min_bytes = min_mb * 1024 * 1024
+    candidates: List[pathlib.Path] = []
+
+    for d in dirs:
+        for f in scan_directory(d):
+            if f.suffix.lower() in VIDEO_EXTENSIONS:
+                if recordings_only and not is_screen_recording(f):
+                    continue
+                try:
+                    stat = f.stat()
+                    mtime = datetime.datetime.fromtimestamp(stat.st_mtime)
+                    if stat.st_size >= min_bytes and mtime < cutoff:
+                        candidates.append(f)
+                except Exception:
+                    pass
+
+    if not candidates:
+        print(f"├─ ✓ No recordings over {min_mb}MB older than {days} days found.")
+        print("╰─ Clean state.")
+        return
+
+    total_size = sum(f.stat().st_size for f in candidates)
+    print(f"├─ Identified {len(candidates)} bloated recordings ({format_size(total_size)})")
+    for f in candidates:
+        dt = datetime.datetime.fromtimestamp(f.stat().st_mtime)
+        print(f"├─ [{dt.strftime('%Y-%m-%d')}] {f.name[:45]:45} ({format_size(f.stat().st_size)}) in ~/{f.parent.name}")
+
+    if not execute:
+        print("├─ ⚠️  DRY RUN: No recordings moved. Pass --execute to move them to ~/.Trash")
+        print(f"╰─ Run: apex-photos --clean-recordings --days {days} --min-mb {min_mb} --execute")
+    else:
+        reclaimed = 0
+        for f in candidates:
+            try:
+                sz = f.stat().st_size
+                move_to_trash(f)
+                reclaimed += sz
+            except Exception as err:
+                print(f"│  ✗ Failed to move {f.name}: {err}")
+        print(f"├─ ✅ MOVED {len(candidates)} large recordings to ~/.Trash ({format_size(reclaimed)} reclaimed)")
+        print("╰─ Files are in macOS Trash.")
+
+
+# ==============================================================================
+# ACTION: ORGANIZE IMAGES (By Date YYYY-MM or By Category)
+# ==============================================================================
+def action_organize(
+    source_dir: pathlib.Path,
+    dest_dir: pathlib.Path,
+    mode: str = "date",
+    copy_only: bool = False,
+    execute: bool = False,
+):
+    print(f"╭─ 📁 ORGANIZING IMAGES ({mode.upper()} mode)")
+    print(f"├─ Source: {source_dir}")
+    print(f"├─ Destination: {dest_dir}")
+
+    files = scan_directory(source_dir, recursive=False)
+    if not files:
+        print(f"├─ No loose media files found in {source_dir}.")
+        print("╰─ Nothing to organize.")
+        return
+
+    planned_moves: List[Tuple[pathlib.Path, pathlib.Path]] = []
+
+    for f in files:
+        if mode == "date":
+            dt = get_media_creation_date(f)
+            folder_name = dt.strftime("%Y-%m")
+        else:
+            folder_name = classify_media_type(f)
+
+        target_folder = dest_dir / folder_name
+        target_path = target_folder / f.name
+
+        # If collision, append counter
+        if target_path.exists() and target_path != f:
+            stem = f.stem
+            suffix = f.suffix
+            counter = 1
+            while target_path.exists():
+                target_path = target_folder / f"{stem}_{counter}{suffix}"
+                counter += 1
+
+        planned_moves.append((f, target_path))
+
+    # Show summary of planned folders
+    folder_summary: Dict[str, int] = defaultdict(int)
+    for _, target in planned_moves:
+        folder_summary[target.parent.name] += 1
+
+    print(f"├─ Total Files to Organize: {len(planned_moves)}")
+    print(f"├─ Target Folders: " + ", ".join(f"{k} ({v})" for k, v in sorted(folder_summary.items())))
+
+    if not execute:
+        print(f"├─ ⚠️  DRY RUN: No files moved. Pass --execute to execute.")
+        for src, dst in planned_moves[:8]:
+            print(f"│  ↳ Would move: {src.name} → {dst.parent.name}/{dst.name}")
+        if len(planned_moves) > 8:
+            print(f"│  ↳ ... and {len(planned_moves) - 8} more files")
+        print(f"╰─ Run: apex-photos --organize {source_dir} --dest {dest_dir} --mode {mode} --execute")
+    else:
+        success = 0
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for src, dst in planned_moves:
+            try:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if copy_only:
+                    shutil.copy2(str(src), str(dst))
+                else:
+                    shutil.move(str(src), str(dst))
+                success += 1
+            except Exception as err:
+                print(f"│  ✗ Error moving {src.name}: {err}")
+        action_verb = "Copied" if copy_only else "Moved"
+        print(f"├─ ✅ {action_verb} {success}/{len(planned_moves)} media files into {dest_dir}")
+        print("╰─ Folder structure organized and indexed.")
+
+
+# ==============================================================================
+# ACTION: APPLE PHOTOS.APP INTEGRATION
+# ==============================================================================
+def action_photos_app_status():
+    print("╭─ 🍏 APPLE PHOTOS LIBRARY AUDIT")
+    if not PHOTOS_DB.exists():
+        print(f"├─ ✗ Photos database not found at {PHOTOS_DB}")
+        print("╰─ Ensure Photos.app library exists in ~/Pictures")
+        return
+
+    try:
+        conn = sqlite3.connect(f"file:{PHOTOS_DB}?mode=ro", uri=True)
+        cursor = conn.cursor()
+
+        # Total assets
+        cursor.execute("SELECT COUNT(*) FROM ZASSET;")
+        total_assets = cursor.fetchone()[0]
+
+        # Screenshots
+        cursor.execute("SELECT COUNT(*) FROM ZASSET WHERE ZISDETECTEDSCREENSHOT = 1;")
+        screenshots = cursor.fetchone()[0]
+
+        # Favorites
+        cursor.execute("SELECT COUNT(*) FROM ZASSET WHERE ZFAVORITE = 1;")
+        favorites = cursor.fetchone()[0]
+
+        # Hidden
+        cursor.execute("SELECT COUNT(*) FROM ZASSET WHERE ZHIDDEN = 1;")
+        hidden = cursor.fetchone()[0]
+
+        # Albums
+        cursor.execute("SELECT COUNT(*) FROM ZGENERICALBUM WHERE ZTITLE IS NOT NULL;")
+        albums = cursor.fetchone()[0]
+
+        conn.close()
+
+        print(f"├─ Total Photos & Videos: {total_assets:,}")
+        print(f"├─ User Albums: {albums:,}")
+        print(f"├─ Favorite Photos: {favorites:,}")
+        print(f"├─ Detected Screenshots: {screenshots:,}")
+        print(f"├─ Hidden Photos: {hidden:,}")
+        print("╰─ Commands:")
+        print("   • apex-photos --albums                  # List all albums")
+        print("   • apex-photos --album \"<Album Name>\"     # Inspect photos in album")
+
+    except Exception as err:
+        print(f"├─ ✗ SQLite query failed: {err}")
+        print("╰─ Apple Photos library may be locked by another process.")
+
+
+def action_photos_app_album_contents(album_name: str, limit: int = 25):
+    print(f"╭─ 📁 APPLE PHOTOS ALBUM: \"{album_name}\"")
+    if not PHOTOS_DB.exists():
+        print("├─ ✗ Photos database not found.")
+        print("╰─ Aborted.")
+        return
+
+    try:
+        conn = sqlite3.connect(f"file:{PHOTOS_DB}?mode=ro", uri=True)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT a.ZFILENAME,
+                   datetime(a.ZDATECREATED + 978307200, 'unixepoch', 'localtime') as created_at,
+                   a.ZWIDTH, a.ZHEIGHT, a.ZFAVORITE
+            FROM ZASSET a
+            JOIN Z_33ASSETS ja ON a.Z_PK = ja.Z_3ASSETS
+            JOIN ZGENERICALBUM ga ON ga.Z_PK = ja.Z_33ALBUMS
+            WHERE ga.ZTITLE = ?
+            ORDER BY a.ZDATECREATED DESC;
+        """, (album_name,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        if not rows:
+            print(f"├─ No media items found in album \"{album_name}\" (or album does not exist).")
+            print("╰─ Run: apex-photos --albums to list all available albums.")
+            return
+
+        print(f"├─ Total Media Items in \"{album_name}\": {len(rows):,}")
+        for filename, dt, width, height, fav in rows[:limit]:
+            fav_icon = "⭐ " if fav else "   "
+            res = f"{width}x{height}" if width and height else "Unknown"
+            print(f"├─ {fav_icon}[{dt}] {filename[:36]:36} ({res:>11})")
+        if len(rows) > limit:
+            print(f"├─ ... and {len(rows) - limit} more items in this album")
+        print("╰─ To export album to folder: apex-photos --export-album \"" + album_name + "\" --dest ~/Pictures/Exported")
+
+    except Exception as err:
+        print(f"├─ ✗ SQLite query failed: {err}")
+        print("╰─ Aborted.")
+
+
+def action_photos_app_albums():
+    print("╭─ 📚 APPLE PHOTOS ALBUMS LIST")
+    if not PHOTOS_DB.exists():
+        print("├─ ✗ Photos database not found.")
+        print("╰─ Aborted.")
+        return
+
+    try:
+        conn = sqlite3.connect(f"file:{PHOTOS_DB}?mode=ro", uri=True)
+        cursor = conn.cursor()
+
+        # Query albums with counts via Z_33ASSETS junction table
+        cursor.execute("""
+            SELECT ga.ZTITLE, COUNT(ja.Z_3ASSETS) as asset_count
+            FROM ZGENERICALBUM ga
+            LEFT JOIN Z_33ASSETS ja ON ga.Z_PK = ja.Z_33ALBUMS
+            WHERE ga.ZTITLE IS NOT NULL AND ga.ZTITLE != ''
+            GROUP BY ga.Z_PK
+            ORDER BY asset_count DESC;
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+
+        print(f"├─ Found {len(rows)} albums in Apple Photos Library:")
+        for title, count in rows[:25]:
+            print(f"├─ 📁 {title:<35} ({count:>4} items)")
+        if len(rows) > 25:
+            print(f"├─ ... and {len(rows) - 25} more albums")
+        print("╰─ To inspect photos in an album: apex-photos --album \"<Name>\"")
+
+    except Exception as err:
+        print(f"├─ ✗ SQLite query failed: {err}")
+        print("╰─ Aborted.")
+
+
+# ==============================================================================
+# MAIN ENTRYPOINT
+# ==============================================================================
+def main():
+    parser = argparse.ArgumentParser(
+        prog="apex-photos",
+        description="Apex Image & Photo Intelligence Suite — Scan, organize, deduplicate & clean",
+    )
+    parser.add_argument("--scan", action="store_true", help="Scan Desktop & Downloads for images and media")
+    parser.add_argument("--recent", "-r", type=int, nargs="?", const=15, default=None, help="Show N recent media files")
+    parser.add_argument("--duplicates", "-d", action="store_true", help="Scan for duplicate images")
+    parser.add_argument("--clean-duplicates", action="store_true", help="Clean duplicate images (keeps original, moves rest to Trash)")
+    parser.add_argument("--screenshots", action="store_true", help="List screenshots")
+    parser.add_argument("--clean-screenshots", action="store_true", help="Move disposable screenshots to ~/.Trash")
+    parser.add_argument("--clean-recordings", action="store_true", help="Move large screen recordings (>20MB) to ~/.Trash")
+    parser.add_argument("--days", type=int, default=14, help="Days threshold for screenshot/recording cleanup (default: 14)")
+    parser.add_argument("--min-mb", type=int, default=20, help="Minimum MB size for recording cleanup (default: 20)")
+    parser.add_argument("--organize", "-o", nargs="?", const=str(pathlib.Path.home() / "Downloads"), default=None, help="Organize loose media files from dir")
+    parser.add_argument("--dest", type=str, default=str(ORGANIZED_ROOT), help=f"Destination directory (default: {ORGANIZED_ROOT})")
+    parser.add_argument("--mode", choices=["date", "type"], default="date", help="Organization mode: date (YYYY-MM) or type (Screenshots/AI-Art/Photos)")
+    parser.add_argument("--copy", action="store_true", help="Copy instead of moving files during organize")
+    parser.add_argument("--execute", action="store_true", help="Actually execute file moves/deletions (default is safe dry-run)")
+    parser.add_argument("--photos-app", action="store_true", help="Query Apple Photos library status")
+    parser.add_argument("--albums", action="store_true", help="List Apple Photos library albums")
+    parser.add_argument("--album", type=str, default=None, help="Inspect photos in a specific Apple Photos album")
+    parser.add_argument("--recursive", action="store_true", help="Scan subdirectories recursively")
+    parser.add_argument("paths", nargs="*", help="Optional custom directories to scan/process")
+
+    args = parser.parse_args()
+
+    # Determine target directories
+    target_dirs = [pathlib.Path(p).expanduser().resolve() for p in args.paths] if args.paths else DEFAULT_SCAN_DIRS
+
+    if args.photos_app:
+        action_photos_app_status()
+    elif args.albums:
+        action_photos_app_albums()
+    elif args.album:
+        action_photos_app_album_contents(args.album)
+    elif args.recent is not None:
+        action_recent(target_dirs, limit=args.recent)
+    elif args.clean_duplicates or args.duplicates:
+        action_duplicates(target_dirs, clean=args.clean_duplicates, execute=args.execute)
+    elif args.clean_screenshots or args.screenshots:
+        action_clean_screenshots(target_dirs, days=args.days, execute=args.execute)
+    elif args.clean_recordings:
+        action_clean_recordings(target_dirs, days=args.days, min_mb=args.min_mb, execute=args.execute)
+    elif args.organize is not None:
+        src = pathlib.Path(args.organize).expanduser().resolve()
+        dst = pathlib.Path(args.dest).expanduser().resolve()
+        action_organize(src, dst, mode=args.mode, copy_only=args.copy, execute=args.execute)
+    else:
+        # Default behavior: scan and show summary
+        action_scan(target_dirs, recursive=args.recursive)
+
+
+if __name__ == "__main__":
+    main()

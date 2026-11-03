@@ -388,6 +388,41 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_messages",
+            "description": "Read recent SMS and iMessages from Rick Jefferson's phone, inspect conversation history with a specific contact, search message content, or check for phishing/spam texts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mode": {"type": "string", "enum": ["recent", "contact", "search", "spam", "large_attachments", "conversations"], "description": "Reading mode"},
+                    "contact": {"type": "string", "description": "Contact name or phone number when mode='contact'"},
+                    "query": {"type": "string", "description": "Keyword to search across text history when mode='search'"},
+                    "limit": {"type": "integer", "description": "Number of messages to retrieve (default: 15)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_photos",
+            "description": "Scan, organize, deduplicate, and clean images, screenshots, and recordings on Rick Jefferson's Mac, and inspect Apple Photos library albums.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["scan", "recent", "duplicates", "clean_duplicates", "clean_screenshots", "clean_recordings", "organize", "photos_app", "albums", "album_contents"], "description": "Photo/Image management action"},
+                    "directory": {"type": "string", "description": "Target directory to scan or organize (default Desktop and Downloads)"},
+                    "days": {"type": "integer", "description": "Days threshold for old screenshot/recording cleanup (default: 14)"},
+                    "min_mb": {"type": "integer", "description": "Minimum MB size for recording cleanup (default: 20)"},
+                    "mode": {"type": "string", "enum": ["date", "type"], "description": "Organization mode: date (YYYY-MM) or type (Screenshots/AI-Art/Photos)"},
+                    "album": {"type": "string", "description": "Album name when action='album_contents'"},
+                    "execute": {"type": "boolean", "description": "Set to true to actually execute move/clean (default false is safe preview)"},
+                },
+            },
+        },
+    },
 ]
 
 # Tools safe to execute concurrently in parallel threads
@@ -400,6 +435,7 @@ READ_ONLY_TOOLS = {
     "fetch_web",
     "semantic_search_memory",
     "search_contacts",
+    "read_messages",
 }
 
 
@@ -664,6 +700,83 @@ def execute_single_tool(name: str, args: Dict[str, Any], trust: str, allow_cmds:
                 return f"✓ SMS/iMessage successfully sent to {target_name} ({target_phone}) from Rick's number (+1 945-308-8003): \"{msg}\""
             else:
                 return f"ERROR sending text to {target_name} ({target_phone}): {detail}"
+
+        elif name == "read_messages":
+            mode = args.get("mode", "recent")
+            limit = args.get("limit", 15)
+            cmd = ["apex-messages"]
+            if mode == "recent":
+                cmd.extend(["--recent", str(limit)])
+            elif mode == "contact":
+                contact = args.get("contact", "")
+                if not contact:
+                    return "ERROR: 'contact' argument required for mode='contact'"
+                cmd.extend(["--contact", contact])
+            elif mode == "search":
+                q = args.get("query", "")
+                if not q:
+                    return "ERROR: 'query' argument required for mode='search'"
+                cmd.extend(["--search", q])
+            elif mode == "spam":
+                cmd.append("--spam")
+            elif mode == "conversations":
+                cmd.append("--conversations")
+            elif mode == "large_attachments":
+                cmd.append("--large-attachments")
+            
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            return res.stdout.strip() or res.stderr.strip() or "No messages found."
+
+        elif name == "manage_photos":
+            action = args.get("action", "scan")
+            execute = args.get("execute", False)
+            cmd = ["apex-photos"]
+            
+            if action == "scan":
+                cmd.append("--scan")
+            elif action == "recent":
+                limit = args.get("limit", 15)
+                cmd.extend(["--recent", str(limit)])
+            elif action == "duplicates":
+                cmd.append("--duplicates")
+            elif action == "clean_duplicates":
+                cmd.append("--clean-duplicates")
+                if execute:
+                    cmd.append("--execute")
+            elif action == "clean_screenshots":
+                cmd.append("--clean-screenshots")
+                days = args.get("days", 14)
+                cmd.extend(["--days", str(days)])
+                if execute:
+                    cmd.append("--execute")
+            elif action == "clean_recordings":
+                cmd.append("--clean-recordings")
+                days = args.get("days", 14)
+                min_mb = args.get("min_mb", 20)
+                cmd.extend(["--days", str(days), "--min-mb", str(min_mb)])
+                if execute:
+                    cmd.append("--execute")
+            elif action == "organize":
+                target_dir = args.get("directory", str(pathlib.Path.home() / "Downloads"))
+                mode = args.get("mode", "date")
+                cmd.extend(["--organize", target_dir, "--mode", mode])
+                if execute:
+                    cmd.append("--execute")
+            elif action == "photos_app":
+                cmd.append("--photos-app")
+            elif action == "albums":
+                cmd.append("--albums")
+            elif action == "album_contents":
+                album = args.get("album", "")
+                if not album:
+                    return "ERROR: 'album' name required for action='album_contents'"
+                cmd.extend(["--album", album])
+
+            if args.get("directory") and action in ["scan", "duplicates", "clean_duplicates", "clean_screenshots", "clean_recordings"]:
+                cmd.append(args["directory"])
+
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            return res.stdout.strip() or res.stderr.strip() or "Photo task completed."
 
     except Exception as e:
         return f"TOOL_ERROR in {name}: {e}"

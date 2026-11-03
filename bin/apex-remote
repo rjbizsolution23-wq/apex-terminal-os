@@ -215,11 +215,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <button onclick="switchTab('actions')" id="tab-actions" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
           <span>⚡</span> <span>Quick Actions</span>
         </button>
+        <button onclick="switchTab('sms')" id="tab-sms" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
+          <span>💬</span> <span>SMS &amp; Inbox</span>
+        </button>
+        <button onclick="switchTab('photos')" id="tab-photos" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
+          <span>🖼️</span> <span>Photos &amp; Clean</span>
+        </button>
         <button onclick="switchTab('iphone')" id="tab-iphone" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
           <span>📱</span> <span>iPhone &amp; Siri</span>
-        </button>
-        <button onclick="switchTab('sms')" id="tab-sms" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
-          <span>💬</span> <span>SMS &amp; Text</span>
         </button>
       </div>
     </div>
@@ -603,6 +606,145 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         <!-- Delivery Status Receipt -->
         <div id="sms-receipt-box" class="mt-4 hidden p-3 rounded-xl border text-xs font-mono"></div>
+
+        <!-- Live Inbox Stream -->
+        <div class="mt-6 pt-5 border-t border-slate-800">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-base">📥</span>
+              <h3 class="text-sm font-display font-bold text-white">Live Messages &amp; SMS Inbox</h3>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="loadSpamMessages()" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                <span>🚨</span> <span>Scan Spam</span>
+              </button>
+              <button onclick="loadRecentMessages()" id="btn-refresh-inbox" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                <span>🔄</span> <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div id="inbox-stream-box" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-300 max-h-72 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+            Click 'Refresh' to inspect recent text messages...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 5: PHOTOS & CLEAN ================= -->
+    <section id="view-photos" class="flex-1 flex flex-col gap-4 hidden">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-xl">
+        <div class="absolute inset-0 bg-gradient-to-b from-sky-600/10 to-transparent pointer-events-none"></div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🖼️</span>
+              <h2 class="text-lg sm:text-xl font-display font-bold text-white">Photo Intelligence &amp; Storage Optimizer</h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Automated image organization, duplicate cleaner &amp; Apple Photos library bridge
+            </p>
+          </div>
+          <button onclick="runPhotoAction('scan')" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition w-fit">
+            <span>🔄</span> <span>Scan Storage</span>
+          </button>
+        </div>
+
+        <!-- 4 Action Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          <!-- Duplicates -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <span>👯</span> <span>Duplicate Images</span>
+                </span>
+                <span class="text-[10px] font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">~1.91 GB</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mb-3">Identifies identical image copies across Desktop &amp; Downloads, keeps original, purges copies to Trash.</p>
+            </div>
+            <button onclick="runPhotoAction('clean_duplicates')" class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm w-full">
+              <span>🧹</span> <span>Clean Duplicate Images</span>
+            </button>
+          </div>
+
+          <!-- Screenshots -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <span>📸</span> <span>Old Screenshots</span>
+                </span>
+                <span class="text-[10px] font-mono text-sky-400 bg-sky-400/10 px-2 py-0.5 rounded border border-sky-400/20">221 Files (~462 MB)</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mb-3">Cleans disposable screenshots older than 14 days cluttering Desktop &amp; Downloads safely to Trash.</p>
+            </div>
+            <button onclick="runPhotoAction('clean_screenshots')" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm w-full">
+              <span>🧹</span> <span>Clean Screenshots (&gt;14d)</span>
+            </button>
+          </div>
+
+          <!-- Screen Recordings -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <span>🎥</span> <span>Bloated Screen Recordings</span>
+                </span>
+                <span class="text-[10px] font-mono text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded border border-rose-400/20">21 Files (~3.88 GB)</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mb-3">Moves disposable screen captures &gt;20MB older than 14 days to Trash, protecting music videos.</p>
+            </div>
+            <button onclick="runPhotoAction('clean_recordings')" class="bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm w-full">
+              <span>🧹</span> <span>Clean Recordings (&gt;20MB)</span>
+            </button>
+          </div>
+
+          <!-- Organize -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <span>📁</span> <span>Organize Downloads</span>
+                </span>
+                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">YYYY-MM</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mb-3">Organizes loose downloaded images into structured date-based directories in ~/Pictures/Organized/.</p>
+            </div>
+            <button onclick="runPhotoAction('organize')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm w-full">
+              <span>📁</span> <span>Organize into YYYY-MM</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Apple Photos Row -->
+        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl">🍏</span>
+            <div>
+              <div class="text-xs font-bold text-white">Apple Photos Library Bridge</div>
+              <div class="text-[11px] text-slate-400">24,194 Photos &amp; Videos · 199 Albums Indexed</div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="runPhotoAction('photos_app')" class="bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700/80 transition flex items-center gap-1">
+              <span>📊</span> <span>Library Status</span>
+            </button>
+            <button onclick="runPhotoAction('albums')" class="bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700/80 transition flex items-center gap-1">
+              <span>📚</span> <span>List Albums</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Terminal Output Receipt -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+            <span>📟</span> <span>Optimizer Output</span>
+          </label>
+          <div id="photos-output-box" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-300 max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+            Ready. Tap any action above to run image organization or storage cleanup.
+          </div>
+        </div>
       </div>
     </section>
 
@@ -633,19 +775,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     // ---------- Tab Switching ----------
     function switchTab(tabId) {
       activeTab = tabId;
-      ['voice', 'terminal', 'actions', 'iphone', 'sms'].forEach(id => {
+      ['voice', 'terminal', 'actions', 'sms', 'photos', 'iphone'].forEach(id => {
         const view = document.getElementById('view-' + id);
         const btn = document.getElementById('tab-' + id);
-        if (id === tabId) {
-          view.classList.remove('hidden');
-          btn.classList.add('bg-blue-600', 'text-white');
-          btn.classList.remove('bg-slate-800', 'text-slate-300');
-        } else {
-          view.classList.add('hidden');
-          btn.classList.remove('bg-blue-600', 'text-white');
-          btn.classList.add('bg-slate-800', 'text-slate-300');
+        if (view && btn) {
+          if (id === tabId) {
+            view.classList.remove('hidden');
+            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.remove('bg-slate-800', 'text-slate-300');
+          } else {
+            view.classList.add('hidden');
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-slate-800', 'text-slate-300');
+          }
         }
       });
+      if (tabId === 'sms') {
+        loadRecentMessages();
+      } else if (tabId === 'photos') {
+        runPhotoAction('scan');
+      }
     }
 
     // ---------- Robust Multi-Engine Voice Recognition ----------
@@ -956,6 +1105,66 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
+    // ---------- Messages Inbox Integration ----------
+    async function loadRecentMessages() {
+      const box = document.getElementById('inbox-stream-box');
+      box.textContent = 'Loading latest incoming SMS and iMessages...';
+      try {
+        const res = await fetch('/api/messages?limit=15&pin=' + encodeURIComponent(getActivePin()));
+        const data = await res.json();
+        if (data.status === 'ok') {
+          box.textContent = data.output || 'No recent messages.';
+        } else {
+          box.textContent = 'Failed to load messages: ' + (data.error || 'Unknown error');
+        }
+      } catch (err) {
+        box.textContent = 'Error querying Messages database: ' + err.message;
+      }
+    }
+
+    async function loadSpamMessages() {
+      const box = document.getElementById('inbox-stream-box');
+      box.textContent = 'Scanning for spam, phishing, and scam messages...';
+      try {
+        const res = await fetch('/api/messages?mode=spam&pin=' + encodeURIComponent(getActivePin()));
+        const data = await res.json();
+        if (data.status === 'ok') {
+          box.textContent = data.output || 'No spam detected.';
+        } else {
+          box.textContent = 'Failed to scan spam: ' + (data.error || 'Unknown error');
+        }
+      } catch (err) {
+        box.textContent = 'Error scanning spam: ' + err.message;
+      }
+    }
+
+    // ---------- Photo & Storage Actions ----------
+    async function runPhotoAction(action) {
+      const box = document.getElementById('photos-output-box');
+      box.textContent = `Running ${action}...`;
+      try {
+        const res = await fetch('/api/photos-action', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Apex-PIN': getActivePin()
+          },
+          body: JSON.stringify({
+            action: action,
+            pin: getActivePin()
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          box.textContent = data.output || 'Action completed.';
+        } else {
+          box.textContent = 'Error: ' + (data.error || 'Action failed');
+        }
+      } catch (err) {
+        box.textContent = 'Network error: ' + err.message;
+      }
+    }
+
     // ---------- Live Status Polling ----------
     async function updateStatus() {
       try {
@@ -1137,6 +1346,51 @@ class SovereignRemoteHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(shortcut_info, indent=2).encode("utf-8"))
             return
 
+        # Messages Inbox Endpoint
+        if path == "/api/messages":
+            qs = urllib.parse.parse_qs(url_parts.query)
+            limit = int(qs.get("limit", [15])[0])
+            search_q = qs.get("search", [""])[0].strip()
+            mode = qs.get("mode", ["recent"])[0].strip()
+
+            msg_bin = pathlib.Path.home() / ".local/bin/apex-messages"
+            if not msg_bin.exists():
+                msg_bin = pathlib.Path(__file__).resolve().parent / "apex-messages"
+
+            cmd = [sys.executable, str(msg_bin)]
+            if search_q:
+                cmd.extend(["--search", search_q])
+            elif mode == "spam":
+                cmd.append("--spam")
+            elif mode == "large_attachments":
+                cmd.append("--large-attachments")
+            else:
+                cmd.extend(["--recent", str(limit)])
+
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            out = (r.stdout + "\n" + r.stderr).strip()
+            self.wfile.write(json.dumps({"status": "ok", "output": out}).encode("utf-8"))
+            return
+
+        # Photos Status Endpoint
+        if path == "/api/photos-summary":
+            photo_bin = pathlib.Path.home() / ".local/bin/apex-photos"
+            if not photo_bin.exists():
+                photo_bin = pathlib.Path(__file__).resolve().parent / "apex-photos"
+
+            r = subprocess.run([sys.executable, str(photo_bin), "--scan"], capture_output=True, text=True, timeout=15)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            out = (r.stdout + "\n" + r.stderr).strip()
+            self.wfile.write(json.dumps({"status": "ok", "output": out}).encode("utf-8"))
+            return
+
         # Root: Serve Sovereign Mobile Voice & Remote Dashboard
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -1269,6 +1523,87 @@ class SovereignRemoteHandler(http.server.BaseHTTPRequestHandler):
                 "detail": detail,
                 "sender": "Rick Jefferson (+1 945-308-8003)"
             }).encode("utf-8"))
+            return
+
+        # Photos Action Endpoint
+        if path == "/api/photos-action":
+            content_len = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body) if body else {}
+
+            req_pin = data.get("pin") or self.headers.get("X-Apex-PIN") or urllib.parse.parse_qs(url_parts.query).get("pin", [""])[0]
+            if req_pin and req_pin != self.pin:
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": "Unauthorized PIN"}).encode("utf-8"))
+                return
+
+            action = data.get("action", "scan")
+            photo_bin = pathlib.Path.home() / ".local/bin/apex-photos"
+            if not photo_bin.exists():
+                photo_bin = pathlib.Path(__file__).resolve().parent / "apex-photos"
+
+            cmd = [sys.executable, str(photo_bin)]
+            if action == "clean_duplicates":
+                cmd.extend(["--clean-duplicates", "--execute"])
+            elif action == "clean_screenshots":
+                cmd.extend(["--clean-screenshots", "--days", str(data.get("days", 14)), "--execute"])
+            elif action == "clean_recordings":
+                cmd.extend(["--clean-recordings", "--days", str(data.get("days", 14)), "--min-mb", str(data.get("min_mb", 20)), "--execute"])
+            elif action == "organize":
+                cmd.extend(["--organize", str(pathlib.Path.home() / "Downloads"), "--execute"])
+            elif action == "photos_app":
+                cmd.append("--photos-app")
+            elif action == "albums":
+                cmd.append("--albums")
+            elif action == "duplicates":
+                cmd.append("--duplicates")
+            else:
+                cmd.append("--scan")
+
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok", "action": action, "output": r.stdout}).encode("utf-8"))
+            return
+
+        # Messages Clean Endpoint
+        if path == "/api/messages-clean":
+            content_len = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body) if body else {}
+
+            req_pin = data.get("pin") or self.headers.get("X-Apex-PIN") or urllib.parse.parse_qs(url_parts.query).get("pin", [""])[0]
+            if req_pin and req_pin != self.pin:
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": "Unauthorized PIN"}).encode("utf-8"))
+                return
+
+            action = data.get("action", "clean_attachments")
+            msg_bin = pathlib.Path.home() / ".local/bin/apex-messages"
+            if not msg_bin.exists():
+                msg_bin = pathlib.Path(__file__).resolve().parent / "apex-messages"
+
+            cmd = [sys.executable, str(msg_bin)]
+            if action == "clean_attachments":
+                min_mb = data.get("min_mb", 50)
+                cmd.extend(["--clean-attachments", str(min_mb), "--execute"])
+            elif action == "spam":
+                cmd.append("--spam")
+            else:
+                cmd.append("--large-attachments")
+
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok", "action": action, "output": r.stdout}).encode("utf-8"))
             return
 
         self.send_response(404)

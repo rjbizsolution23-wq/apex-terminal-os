@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""
+apex-messages — Sovereign macOS Text Message & iMessage Intelligence Engine
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+Reads, searches, audits, and cleans SMS and iMessage history from ~/Library/Messages/chat.db.
+
+Usage:
+  apex-messages --recent 15              # Read last 15 messages
+  apex-messages --conversations          # List active conversation threads
+  apex-messages --contact "Jackie"       # Read thread with Jackie
+  apex-messages --search "invoice"       # Search all messages for keyword
+  apex-messages --spam                   # Detect spam/phishing messages
+  apex-messages --large-attachments      # List attachments taking heavy disk space
+  apex-messages --clean-attachments 50   # Move attachments >50MB to Trash
+  apex-messages --delete-thread "+212..."# Delete spam chat thread
+"""
+
+import argparse
+import os
+import pathlib
+import re
+import shutil
+import sqlite3
+import subprocess
+import sys
+from typing import Dict, List, Tuple, Optional
+
+CHAT_DB = pathlib.Path.home() / "Library/Messages/chat.db"
+ATTACHMENTS_DIR = pathlib.Path.home() / "Library/Messages/Attachments"
+CACHE_DB = pathlib.Path.home() / ".apex-workspace/messages.db"
+APPLE_EPOCH = 978307200  # 2001-01-01 00:00:00 UTC
+
+
+def sync_messages_cache():
+    """Sync primary chat.db to workspace cache if readable."""
+    try:
+        CACHE_DB.parent.mkdir(parents=True, exist_ok=True)
+        if CHAT_DB.exists():
+            shutil.copy2(str(CHAT_DB), str(CACHE_DB))
+    except Exception:
+        pass
+
+
+def get_db_connection() -> sqlite3.Connection:
+    # 1. Try opening primary chat.db directly
+    if CHAT_DB.exists():
+        try:
+            conn = sqlite3.connect(f"file:{CHAT_DB}?mode=ro", uri=True)
+            conn.cursor().execute("SELECT 1 FROM message LIMIT 1")
+            return conn
+        except sqlite3.OperationalError:
+            pass  # Fall back to workspace cache
+
+    # 2. Try opening workspace cached database (used by background daemons subject to TCC)
+    if CACHE_DB.exists():
+        try:
+            return sqlite3.connect(f"file:{CACHE_DB}?mode=ro", uri=True)
+        except Exception:
+            pass
+
+    print(f"\033[1;31mError: Unable to open Messages database at {CHAT_DB} or cache at {CACHE_DB}\033[0m")
+    sys.exit(1)
+
+
+def clean_phone(raw: str) -> str:
+    digits = re.sub(r"[^\d+]", "", raw.strip())
+    if digits.startswith("+"):
+        return digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+1" + digits
+    return "+" + digits if digits else raw
+
+
+def load_contact_map() -> Dict[str, str]:
+    """Load name-to-phone mapping from macOS Contacts.app."""
+    script = '''
+    tell application "Contacts"
+        set outList to {}
+        repeat with p in (people)
+            set pName to name of p
+            repeat with ph in phones of p
+                set end of outList to (pName & "|" & (value of ph))
+            end repeat
+        end repeat
+        return outList
+    end tell
+    '''
+    try:
+        res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
+        if res.returncode != 0:
+            return {}
+        c_map = {}
+        entries = [e.strip() for e in res.stdout.strip().split(", ")]
+        for entry in entries:
+            if "|" in entry:
+                name, phone = entry.split("|", 1)
+                cleaned = clean_phone(phone)
+                if cleaned:
+                    c_map[cleaned] = name.strip()
+                    # Also map last 10 digits
+                    digits_only = re.sub(r"\D", "", cleaned)
+                    if len(digits_only) >= 10:
+                        c_map[digits_only[-10:]] = name.strip()
+        return c_map
+    except Exception:
+        return {}
+
+
+def resolve_sender(raw_id: str, contact_map: Dict[str, str]) -> str:
+    if not raw_id:
+        return "Unknown"
+    cleaned = clean_phone(raw_id)
+    if cleaned in contact_map:
+        return f"{contact_map[cleaned]} ({cleaned})"
+    digits_only = re.sub(r"\D", "", cleaned)
+    if len(digits_only) >= 10 and digits_only[-10:] in contact_map:
+        return f"{contact_map[digits_only[-10:]]} ({cleaned})"
+    return raw_id
+
+
+def list_recent(limit: int = 15, contact_map: Dict[str, str] = None):
+    contact_map = contact_map or {}
+    conn = get_db_connection()
+    c = conn.cursor()
+    query = """
+    SELECT 
+        m.ROWID,
+        datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') as msg_time,
+        m.is_from_me,
+        coalesce(h.id, 'Me') as sender,
+        m.text
+    FROM message m
+    LEFT JOIN handle h ON m.handle_id = h.ROWID
+    WHERE m.text IS NOT NULL AND length(trim(m.text)) > 0
+    ORDER BY m.date DESC
+    LIMIT ?;
+    """
+    c.execute(query, (limit,))
+    rows = c.fetchall()
+    conn.close()
+
+    print(f"\033[1;34m╭─ 📥 RECENT TEXT MESSAGES & iMESSAGES ({len(rows)} latest)\033[0m")
+    for row in rows:
+        m_id, msg_time, is_me, sender_raw, text = row
+        clean_text = text.replace("\n", " ").strip()
+        if len(clean_text) > 120:
+            clean_text = clean_text[:117] + "..."
+        if is_me:
+            sender_label = "\033[1;36mYou (Me)\033[0m"
+            arrow = "➔"
+        else:
+            name = resolve_sender(sender_raw, contact_map)
+            sender_label = f"\033[1;33m{name}\033[0m"
+            arrow = "←"
+        print(f"├─ \033[1;30m[{msg_time}]\033[0m {arrow} {sender_label}: {clean_text}")
+    print("\033[1;34m╰─ To reply or send text: text \"<Name or Phone>\" \"<Message>\"\033[0m\n")
+
+
+def list_conversations(limit: int = 20, contact_map: Dict[str, str] = None):
+    contact_map = contact_map or {}
+    conn = get_db_connection()
+    c = conn.cursor()
+    query = """
+    SELECT 
+        c.chat_identifier,
+        count(m.ROWID) as msg_count,
+        max(datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime')) as last_active,
+        substr(m.text, 1, 90) as last_msg
+    FROM chat c
+    JOIN chat_message_join cmj ON c.ROWID = cmj.chat_id
+    JOIN message m ON cmj.message_id = m.ROWID
+    WHERE m.text IS NOT NULL AND length(trim(m.text)) > 0
+    GROUP BY c.chat_identifier
+    ORDER BY m.date DESC
+    LIMIT ?;
+    """
+    c.execute(query, (limit,))
+    rows = c.fetchall()
+    conn.close()
+
+    print(f"\033[1;34m╭─ 💬 ACTIVE CONVERSATION THREADS ({len(rows)} recent)\033[0m")
+    for idx, (chat_id, count, last_active, last_msg) in enumerate(rows, 1):
+        name = resolve_sender(chat_id, contact_map)
+        clean_snippet = (last_msg or "").replace("\n", " ").strip()
+        if len(clean_snippet) > 80:
+            clean_snippet = clean_snippet[:77] + "..."
+        print(f"│ {idx:2d}. \033[1;37m{name}\033[0m (\033[1;36m{count} msgs\033[0m) · \033[1;30m{last_active}\033[0m")
+        print(f"│     \033[1;32m↳\033[0m \033[0;37m\"{clean_snippet}\"\033[0m")
+    print("\033[1;34m╰─ Read full thread: apex-messages --contact \"<Name or Phone>\"\033[0m\n")
+
+
+def search_messages(term: str, limit: int = 25, contact_map: Dict[str, str] = None):
+    contact_map = contact_map or {}
+    conn = get_db_connection()
+    c = conn.cursor()
+    query = """
+    SELECT 
+        m.ROWID,
+        datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') as msg_time,
+        m.is_from_me,
+        coalesce(h.id, 'Me') as sender,
+        m.text
+    FROM message m
+    LEFT JOIN handle h ON m.handle_id = h.ROWID
+    WHERE m.text LIKE ?
+    ORDER BY m.date DESC
+    LIMIT ?;
+    """
+    c.execute(query, (f"%{term}%", limit))
+    rows = c.fetchall()
+    conn.close()
+
+    print(f"\033[1;34m╭─ 🔍 SEARCH RESULTS FOR '{term}' ({len(rows)} matches)\033[0m")
+    if not rows:
+        print(f"╰─ No messages found containing '{term}'.\n")
+        return
+    for row in rows:
+        m_id, msg_time, is_me, sender_raw, text = row
+        clean_text = text.replace("\n", " ").strip()
+        sender_label = "You (Me)" if is_me else resolve_sender(sender_raw, contact_map)
+        print(f"├─ \033[1;30m[{msg_time}]\033[0m \033[1;33m{sender_label}\033[0m: {clean_text}")
+    print("\033[1;34m╰─ End of search results.\033[0m\n")
+
+
+def view_contact_thread(target: str, limit: int = 30, contact_map: Dict[str, str] = None):
+    contact_map = contact_map or {}
+    target_phone = clean_phone(target)
+
+    # If target is a name, find matching phone in contact_map
+    if not re.search(r"\d", target):
+        for ph, name in contact_map.items():
+            if target.lower() in name.lower():
+                target_phone = ph
+                break
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    digits_only = re.sub(r"\D", "", target_phone)
+    search_param = f"%{digits_only[-10:]}%" if len(digits_only) >= 10 else f"%{target_phone}%"
+
+    query = """
+    SELECT 
+        m.ROWID,
+        datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') as msg_time,
+        m.is_from_me,
+        coalesce(h.id, 'Me') as sender,
+        m.text
+    FROM message m
+    LEFT JOIN handle h ON m.handle_id = h.ROWID
+    WHERE (h.id LIKE ? OR m.account LIKE ?) AND m.text IS NOT NULL AND length(trim(m.text)) > 0
+    ORDER BY m.date DESC
+    LIMIT ?;
+    """
+    c.execute(query, (search_param, search_param, limit))
+    rows = c.fetchall()
+    conn.close()
+
+    rows.reverse()  # Chronological order
+    name = resolve_sender(target_phone, contact_map)
+    print(f"\033[1;34m╭─ 📜 CONVERSATION THREAD WITH {name} ({len(rows)} messages)\033[0m")
+    if not rows:
+        print(f"╰─ No messages found for '{target}'.\n")
+        return
+    for row in rows:
+        m_id, msg_time, is_me, sender_raw, text = row
+        clean_text = text.replace("\n", "\n│   ")
+        if is_me:
+            print(f"│ \033[1;36m[You · {msg_time}]\033[0m: {clean_text}")
+        else:
+            print(f"│ \033[1;33m[{name} · {msg_time}]\033[0m: {clean_text}")
+    print("\033[1;34m╰─ To reply: text \"" + target + "\" \"<Your Message>\"\033[0m\n")
+
+
+def scan_spam(contact_map: Dict[str, str] = None):
+    contact_map = contact_map or {}
+    conn = get_db_connection()
+    c = conn.cursor()
+    # Spam indicators: unknown foreign codes, suspicious shortcodes, phishing alert words
+    query = """
+    SELECT 
+        m.ROWID,
+        datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') as msg_time,
+        h.id as sender,
+        m.text
+    FROM message m
+    LEFT JOIN handle h ON m.handle_id = h.ROWID
+    WHERE m.is_from_me = 0 AND m.text IS NOT NULL
+      AND (
+          h.id LIKE '+212%' OR h.id LIKE '+44%' OR h.id LIKE '+234%' OR h.id LIKE '%@outlook.com'
+          OR lower(m.text) LIKE '%pnc alert%'
+          OR lower(m.text) LIKE '%hiring department%'
+          OR lower(m.text) LIKE '%urgent account verification%'
+          OR lower(m.text) LIKE '%crypto deposit%'
+          OR lower(m.text) LIKE '%claim your prize%'
+      )
+    ORDER BY m.date DESC
+    LIMIT 20;
+    """
+    c.execute(query)
+    rows = c.fetchall()
+    conn.close()
+
+    print(f"\033[1;31m╭─ 🚨 SUSPICIOUS / SPAM / PHISHING TEXT DETECTOR ({len(rows)} detected)\033[0m")
+    if not rows:
+        print("\033[1;32m╰─ ✓ No obvious phishing or foreign spam messages detected.\033[0m\n")
+        return
+    for row in rows:
+        m_id, msg_time, sender_raw, text = row
+        clean_text = text.replace("\n", " ").strip()
+        print(f"├─ \033[1;31m[SPAM]\033[0m \033[1;33m{sender_raw}\033[0m ({msg_time}): {clean_text[:100]}")
+    print("\033[1;31m╰─ To purge spam threads, run: apex-messages --delete-thread \"<Sender>\"\033[0m\n")
+
+
+def list_large_attachments(min_mb: float = 20.0):
+    conn = get_db_connection()
+    c = conn.cursor()
+    min_bytes = int(min_mb * 1024 * 1024)
+    query = """
+    SELECT 
+        a.ROWID,
+        round(a.total_bytes / (1024.0 * 1024.0), 2) as size_mb,
+        a.mime_type,
+        a.filename
+    FROM attachment a
+    WHERE a.total_bytes >= ? AND a.filename IS NOT NULL
+    ORDER BY a.total_bytes DESC
+    LIMIT 25;
+    """
+    c.execute(query, (min_bytes,))
+    rows = c.fetchall()
+    conn.close()
+
+    total_mb = sum(r[1] for r in rows)
+    print(f"\033[1;35m╭─ 💾 LARGE ATTACHMENTS AUDIT (> {min_mb} MB) · Total: {total_mb:.1f} MB ({len(rows)} files)\033[0m")
+    if not rows:
+        print(f"╰─ No attachments larger than {min_mb} MB found.\n")
+        return
+    for r_id, size_mb, mime, filepath in rows:
+        # Expand ~/ path
+        exp_path = os.path.expanduser(filepath)
+        exists_str = "✓ on disk" if os.path.exists(exp_path) else "✗ missing/cloud"
+        print(f"├─ \033[1;33m{size_mb:6.1f} MB\033[0m | \033[1;36m{mime or 'unknown'}\033[0m | {pathlib.Path(filepath).name} ({exists_str})")
+    print("\033[1;35m╰─ To safely move bloated attachments to Trash: apex-messages --clean-attachments 50\033[0m\n")
+
+
+def clean_attachments(min_mb: float = 50.0, dry_run: bool = True):
+    conn = get_db_connection()
+    c = conn.cursor()
+    min_bytes = int(min_mb * 1024 * 1024)
+    query = """
+    SELECT a.ROWID, a.filename, a.total_bytes
+    FROM attachment a
+    WHERE a.total_bytes >= ? AND a.filename IS NOT NULL
+    ORDER BY a.total_bytes DESC;
+    """
+    c.execute(query, (min_bytes,))
+    rows = c.fetchall()
+    conn.close()
+
+    trash_dir = pathlib.Path.home() / ".Trash"
+    moved_count = 0
+    freed_bytes = 0
+
+    print(f"\033[1;33m╭─ 🧹 CLEANING ATTACHMENTS >= {min_mb} MB (Dry Run: {dry_run})\033[0m")
+    for r_id, filepath, b_size in rows:
+        exp_path = pathlib.Path(os.path.expanduser(filepath))
+        if exp_path.exists() and exp_path.is_file():
+            mb = b_size / (1024 * 1024)
+            if dry_run:
+                print(f"├─ [WOULD TRASH] {mb:.1f} MB: {exp_path.name}")
+            else:
+                try:
+                    dest = trash_dir / exp_path.name
+                    # If exists in trash, append row id
+                    if dest.exists():
+                        dest = trash_dir / f"{exp_path.stem}_{r_id}{exp_path.suffix}"
+                    shutil.move(str(exp_path), str(dest))
+                    print(f"├─ \033[1;32m✓ Moved to Trash\033[0m ({mb:.1f} MB): {exp_path.name}")
+                    moved_count += 1
+                    freed_bytes += b_size
+                except Exception as e:
+                    print(f"├─ ✗ Error moving {exp_path.name}: {e}")
+
+    freed_mb = freed_bytes / (1024 * 1024)
+    if dry_run:
+        print(f"\033[1;33m╰─ Dry run complete. To execute real move to Trash, re-run with: apex-messages --clean-attachments {int(min_mb)} --execute\033[0m\n")
+    else:
+        print(f"\033[1;32m╰─ Done: Moved {moved_count} file(s) to ~/.Trash (Freed {freed_mb:.1f} MB). You can inspect Trash anytime.\033[0m\n")
+
+
+def delete_thread_applescript(target: str):
+    """Deletes an entire chat thread via AppleScript from Messages.app."""
+    safe_target = target.replace('\\', '\\\\').replace('"', '\\"')
+    print(f"\033[1;31m╭─ 🗑️ DELETING CONVERSATION THREAD: {target}\033[0m")
+    confirm = input("  Are you sure you want to delete this thread in Messages.app? [y/N] ").strip().lower()
+    if confirm != "y":
+        print("\033[1;33m╰─ Cancelled.\033[0m\n")
+        return
+
+    script = f'''
+    tell application "Messages"
+        set targetId to "{safe_target}"
+        set delCount to 0
+        repeat with c in (every chat)
+            set cId to id of c
+            if cId contains targetId then
+                delete c
+                set delCount to delCount + 1
+            end if
+        end repeat
+        return delCount
+    end tell
+    '''
+    res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if res.returncode == 0:
+        deleted = res.stdout.strip()
+        print(f"\033[1;32m╰─ ✓ Successfully deleted {deleted} conversation thread(s) in Messages.app.\033[0m\n")
+    else:
+        print(f"\033[1;31m╰─ ✗ Failed to delete thread: {res.stderr.strip()}\033[0m\n")
+
+
+def main():
+    sync_messages_cache()
+    parser = argparse.ArgumentParser(description="Apex Messages & Text Intelligence Suite")
+    parser.add_argument("--recent", "-r", type=int, nargs="?", const=15, help="Read recent N messages (default 15)")
+    parser.add_argument("--conversations", "-c", action="store_true", help="List active conversation threads")
+    parser.add_argument("--contact", "-t", type=str, help="View full conversation thread with Contact or Phone Number")
+    parser.add_argument("--search", "-s", type=str, help="Search all messages for keyword")
+    parser.add_argument("--spam", action="store_true", help="Scan for spam, phishing, and scam messages")
+    parser.add_argument("--large-attachments", action="store_true", help="Audit attachments >20MB")
+    parser.add_argument("--clean-attachments", type=float, help="Move attachments >N MB to ~/.Trash")
+    parser.add_argument("--execute", action="store_true", help="Actually move attachments to Trash (defaults to dry-run)")
+    parser.add_argument("--delete-thread", type=str, help="Delete an unwanted conversation thread in Messages.app")
+    args = parser.parse_args()
+
+    # Preload contacts for name resolution
+    contacts = load_contact_map()
+
+    if args.recent:
+        list_recent(args.recent, contacts)
+    elif args.conversations:
+        list_conversations(20, contacts)
+    elif args.contact:
+        view_contact_thread(args.contact, 30, contacts)
+    elif args.search:
+        search_messages(args.search, 25, contacts)
+    elif args.spam:
+        scan_spam(contacts)
+    elif args.large_attachments:
+        list_large_attachments(20.0)
+    elif args.clean_attachments is not None:
+        clean_attachments(args.clean_attachments, dry_run=not args.execute)
+    elif args.delete_thread:
+        delete_thread_applescript(args.delete_thread)
+    else:
+        # Default behavior: show recent messages
+        list_recent(15, contacts)
+
+
+if __name__ == "__main__":
+    main()

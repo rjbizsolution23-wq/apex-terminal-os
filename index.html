@@ -268,6 +268,8 @@
               <button onclick="simulateAbility(13)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-13">[13] apex-agent</button>
               <button onclick="simulateAbility(14)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-14">[14] apex-sms</button>
               <button onclick="simulateAbility(15)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-15">[15] apex-remote</button>
+              <button onclick="simulateAbility(16)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-16">[16] apex-photos</button>
+              <button onclick="simulateAbility(17)" class="sim-btn px-2.5 py-1 rounded text-xs font-mono bg-slate-800 text-slate-300 hover:bg-slate-700" id="btn-sim-17">[17] apex-messages</button>
             </div>
 
             <!-- Terminal Screen Body -->
@@ -496,6 +498,38 @@
           </div>
           <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
             Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">text &lt;Contact/Phone&gt; &lt;Message&gt;</code> (or <code class="text-slate-800">sms</code> / <code class="text-slate-800">axs</code>). Queries macOS Contacts.app in real-time and dispatches native iMessages and cellular SMS from your mobile carrier number. Integrated directly into <code class="text-slate-800">apex-agent</code> workflows and remote mobile dashboard.
+          </p>
+        </div>
+
+        <!-- Card 13: Image & Photo Intelligence Suite -->
+        <div class="rj-card p-7 border-2 border-sky-500 bg-gradient-to-br from-sky-50/40 to-white">
+          <div class="w-11 h-11 rounded-xl bg-sky-600 text-white flex items-center justify-center font-display font-bold text-lg mb-5 shadow-sm">
+            13
+          </div>
+          <div class="flex items-center justify-between">
+            <h3 class="font-display text-xl font-bold text-slate-900">
+              Image &amp; Photo Intelligence Suite
+            </h3>
+            <span class="text-[10px] bg-sky-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">Photos / Cleanup</span>
+          </div>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">photos</code> (or <code class="text-slate-800">apex-photos</code>). Scans loose media across Desktop &amp; Downloads, finds exact duplicate images via two-pass SHA-256 fingerprinting (freeing 1.9+ GB), purges disposable screenshots (&gt;14d) and bloated recordings (&gt;20MB) safely to macOS Trash, auto-organizes Downloads into <code class="text-slate-800">YYYY-MM</code> directories, and queries Apple Photos Library (24k+ photos, 199 albums).
+          </p>
+        </div>
+
+        <!-- Card 14: Messages & Text Intelligence Suite -->
+        <div class="rj-card p-7 border-2 border-indigo-500 bg-gradient-to-br from-indigo-50/40 to-white">
+          <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-display font-bold text-lg mb-5 shadow-sm">
+            14
+          </div>
+          <div class="flex items-center justify-between">
+            <h3 class="font-display text-xl font-bold text-slate-900">
+              Messages &amp; Text Intelligence Suite
+            </h3>
+            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">Messages / Inbox</span>
+          </div>
+          <p class="text-slate-600 text-sm mt-2.5 leading-relaxed">
+            Type <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">texts</code> (or <code class="text-slate-800">msgs</code> / <code class="text-slate-800">apex-messages</code>). Programmatically reads incoming SMS and iMessages from macOS <code class="text-slate-800">chat.db</code> (19,200+ texts), lists conversation threads, searches message history, detects phishing and scam texts, and audits oversized video attachments (freeing 4+ GB of bloat).
           </p>
         </div>
       </div>
@@ -1246,6 +1280,18 @@
         prompt: "📱 Pairing iPhone 14 over Encrypted Cloudflare Zero-Trust Tunnel",
         route: "╭─ 🌐 Tunnel: https://apex.empirecontentstudios.com\n├─ 🎙️ Voice Studio & Web SMS Messenger Active\n╰─ 🔋 Mac Telemetry: Battery 100% · Load 0.42 · Git branch main",
         output: "✓ Connected: Rick Jefferson's iPhone 14 paired with zero password prompts."
+      },
+      16: {
+        cmd: "⚡ Run > photos --duplicates",
+        prompt: "📸 Two-Pass Image Deduplication & Storage Optimizer",
+        route: "╭─ 🔍 Scanning ~/Desktop & ~/Downloads (647 media files, 23.76 GB)\n├─ Grouping by byte size ➔ Hashing 8KB head & tail fingerprints\n╰─ Apple Photos: 24,194 assets · 199 albums indexed",
+        output: "✓ Found 19 duplicate sets (26 redundant copies, 1.91 GB wasted)\n✓ Ready: run 'photos --clean-duplicates --execute' to move copies to ~/.Trash"
+      },
+      17: {
+        cmd: "⚡ Run > texts --recent 3",
+        prompt: "📥 Reading Real-time SMS & iMessages from macOS chat.db",
+        route: "╭─ 📇 Parsing 19,221 messages in ~/Library/Messages/chat.db\n╰─ Resolving contact names via macOS AddressBook...",
+        output: "├─ [10:01 AM] ← +212786673004: PNC ALERT : Unusual account activity...\n├─ [09:02 AM] ← +14156300125: Lead follow-up drip: order monitor update...\n╰─ To reply or send text: text \"<Name or Phone>\" \"<Message>\""
       }
     };
 
