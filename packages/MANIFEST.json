@@ -6,33 +6,33 @@
       "price": "$197",
       "master_unlock_code": "RJ-DEV-2026",
       "zip_file": "packages/apex-terminal-os-developer-v2.0.zip",
-      "zip_size_bytes": 46112,
-      "zip_sha256": "6368422b5020abd6d1981c91e5b49f6d6101057a9a5d4d627fbf9492ce130166",
+      "zip_size_bytes": 51883,
+      "zip_sha256": "4a53c45b379538619fd760fc98e2f5e0cfee35cbffb332e71962c56db23251c6",
       "tar_file": "packages/apex-terminal-os-developer-v2.0.tar.gz",
-      "tar_size_bytes": 39450,
-      "tar_sha256": "de02c9f6b7e33f213979051ae65be75c7e8bc1042032f019b71f63e3f4f9fb9d"
+      "tar_size_bytes": 45376,
+      "tar_sha256": "f1925952ea8fcc61500a6e8dc434eb011829c2ea65b562aa64d66e40da499fca"
     },
     "sovereign": {
       "tier": "sovereign",
       "price": "$497",
       "master_unlock_code": "RJ-SOV-2026",
       "zip_file": "packages/apex-terminal-os-sovereign-pro-v2.0.zip",
-      "zip_size_bytes": 54272,
-      "zip_sha256": "c87ee07d24c53d3eadb86bf2799b2570df7bd3a5dd549c0fb699e7c638136fc9",
+      "zip_size_bytes": 60213,
+      "zip_sha256": "57d3cf7548156f0e54b41dbdb0373604943e94d3ac86b924568de6488f1dff86",
       "tar_file": "packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz",
-      "tar_size_bytes": 45137,
-      "tar_sha256": "08610e3fce627747e36a453894593667ec5dfae15630a1d562250288e3303a91"
+      "tar_size_bytes": 51030,
+      "tar_sha256": "d9b892bea6dc8d3611a01577b601e19e0322bc7092b419bd215b4fe6b011e531"
     },
     "enterprise": {
       "tier": "enterprise",
       "price": "$1,997",
       "master_unlock_code": "RJ-ENT-2026",
       "zip_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip",
-      "zip_size_bytes": 88818,
-      "zip_sha256": "cae5a7db51f4e0ee2a0c7274900f3c48549aadc7ff6548c028a57acdaa563b99",
+      "zip_size_bytes": 95154,
+      "zip_sha256": "be0438c5bb8ad0748e357bbfcbce137c529726d1ffc11ac8ae1ed3ff76818b02",
       "tar_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.tar.gz",
-      "tar_size_bytes": 75893,
-      "tar_sha256": "a22f26eecded3f5fc89139d24c81c86ec3aa51cfd47d4a36409416de15c42bea"
+      "tar_size_bytes": 82206,
+      "tar_sha256": "93e0ad048ba007301d3f02a59b60db428951034faa34a5961085c60ca7884cb2"
     }
   }
 }

@@ -2,12 +2,16 @@
 
 # --- Apex-Agent & AI Coding Agents (Claude-Code-Killer Engine, OpenCode, Aider) ---
 apex-agent "fix the failing test in tests/" : Launch Claude-Code-style agentic coding loop (read -> edit -> test -> repeat)
+apex-agent --parallel 8 "audit full codebase for vulnerabilities" : Run high-speed parallel tool execution across 8 concurrent threads
+apex-agent --swarm "audit frontend, backend, and db" : Spawn autonomous parallel subagent swarm running disjoint subtasks simultaneously
 apex-agent --plan "add rate limiting to the API" : Plan execution first, inspect step-by-step diffs, execute on approval
 apex-agent --trust yolo "refactor the auth module" : Hands-free zero-nag agentic execution mode (no confirmation spam)
 apex-agent --model ollama "explain this codebase" : Run agentic loop on local Ollama ($0 zero-cost offline tier)
 ax "implement feature" : High-velocity zsh alias for apex-agent
 axp "refactor database schema" : High-velocity alias to plan first before executing
 axy "run full test suite and fix all breaks" : High-velocity alias for hands-free yolo mode
+axpar "audit entire repository" : High-velocity alias for 8-thread concurrent parallel tool execution
+axswarm "split and build full stack" : High-velocity alias for parallel subagent swarm delegation
 npx opencode-ai@latest : Launch OpenCode TUI (#1 open-source provider-agnostic terminal coding agent)
 OPENAI_API_BASE="https://api.venice.ai/api/v1" OPENAI_API_KEY="$VENICE_API_KEY" aider --model openai/zai-org-glm-5-2 : Run Aider Git-Native Pair Programmer wired to Venice GLM 5.2
 OPENAI_API_BASE="https://api.venice.ai/api/v1" OPENAI_API_KEY="$VENICE_API_KEY" aider --model openai/abliteration-abliterated-model-large-v2 : Run Aider with Obliterated Zero-Refusal Model

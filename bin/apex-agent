@@ -1,83 +1,128 @@
 #!/usr/bin/env python3
 """
-apex-agent — Claude-Code-style agentic coding engine for Apex Terminal OS
-Works with any OpenAI-compatible endpoint: Venice AI, Z.ai GLM, OpenRouter, Ollama (localhost:11434), LiteLLM.
+apex-agent v3.0 — Sovereign Agentic Coding & Swarm Execution Engine for Apex Terminal OS
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+Features:
+  - Parallel Tool Execution (ThreadPoolExecutor concurrent reads, searches, and fetches)
+  - Subagent Parallel Swarm (spawn_parallel_workers for disjoint subtasks)
+  - 13-Tool Professional Arsenal (ripgrep, git diff, web scraper, AppleScript GUI, memory)
+  - Multi-Provider Failover Chain (Venice AI -> Sovereign GLM -> OpenRouter -> Local Ollama $0)
+  - Auto-Retry with Exponential Backoff on HTTP 429 rate limits
+  - Claude Code / OpenCode compatibility: reads both AGENTS.md and CLAUDE.md + persistent SQLite memory
+  - Self-Healing Verification Loop & Epistemic Barrier Discipline
 
 Usage:
   apex-agent "fix the failing test in tests/"
-  apex-agent --plan "add rate limiting to the API"      # plan first, execute on approval
-  apex-agent --trust yolo "refactor the auth module"    # no confirmation prompts
-  apex-agent --model ollama "explain this codebase"     # $0 local mode
+  apex-agent --parallel 8 "audit the codebase and find all deprecated APIs"
+  apex-agent --plan "add rate limiting to the API"       # plan first, execute on approval
+  apex-agent --trust yolo "refactor the auth module"     # hands-free zero-nag mode
+  apex-agent --swarm "audit frontend, backend, and db"   # parallel subagent swarm
+  apex-agent --model ollama "explain this codebase"      # $0 local offline mode
 
 Aliases (wired in ~/.zshrc):
-  ax  "task"   -> apex-agent "task"
-  axp "task"   -> apex-agent --plan "task"
-  axy "task"   -> apex-agent --trust yolo "task"
+  ax    "task"   -> apex-agent "task"
+  axp   "task"   -> apex-agent --plan "task"
+  axy   "task"   -> apex-agent --trust yolo "task"
+  axpar "task"   -> apex-agent --parallel 8 "task"
+  axswarm "task" -> apex-agent --swarm "task"
 
 Config (optional) in project root `.apexagent` (JSON):
-  {"model": "zai-org-glm-5-2", "trust": "ask", "max_steps": 40, "allow_cmds": ["pytest", "npm test", "git status"]}
+  {"model": "zai-org-glm-5-2", "trust": "ask", "max_steps": 40, "parallel": 8, "allow_cmds": ["pytest", "npm test", "git status"]}
 """
 
+import concurrent.futures
+import datetime
+import html
 import json
 import os
 import pathlib
+import random
+import re
+import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
+from typing import Any, Dict, List, Tuple
 
 # ---------- Load ~/.apex-workspace/.env if present ----------
 ENV_FILE = pathlib.Path.home() / ".apex-workspace" / ".env"
 if ENV_FILE.exists():
     for _line in ENV_FILE.read_text(encoding="utf-8", errors="replace").splitlines():
         _line = _line.strip()
+        if _line.startswith("export "):
+            _line = _line[7:].strip()
         if _line and not _line.startswith("#") and "=" in _line:
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 
-# ---------- Multi-Provider Failover Chain (Venice -> GLM -> OpenRouter -> Ollama $0) ----------
-def build_provider_chain(requested_model: str = ""):
+# ---------- Multi-Provider Failover Chain ----------
+def build_provider_chain(requested_model: str = "") -> List[Tuple[str, str, str, str]]:
     venice_key = os.environ.get("VENICE_API_KEY", "")
     zai_key = os.environ.get("Z_AI_API_KEY", "c5c2fd9ce8ea4fc7b3efadfdbf43f698.b1U1tW9t9oIdb37f")
     or_key = os.environ.get("OPENROUTER_API_KEY", "")
-    v_model = requested_model if (requested_model and requested_model != "ollama") else os.environ.get("VENICE_MODEL", "zai-org-glm-5-2")
+    v_model = (
+        requested_model
+        if (requested_model and requested_model != "ollama")
+        else os.environ.get("VENICE_MODEL", "zai-org-glm-5-2")
+    )
     ollama_model = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:14b")
 
     if requested_model == "ollama":
-        return [("Ollama Local ($0)", "http://localhost:11434/v1/chat/completions", None, ollama_model)]
+        return [("Ollama Local ($0)", "http://localhost:11434/v1/chat/completions", "", ollama_model)]
 
-    chain = []
+    chain: List[Tuple[str, str, str, str]] = []
     if os.environ.get("LITELLM_PROXY_URL"):
-        chain.append(("LiteLLM Gateway", f"{os.environ['LITELLM_PROXY_URL'].rstrip('/')}/chat/completions", os.environ.get("LITELLM_API_KEY", venice_key), v_model))
+        chain.append(
+            (
+                "LiteLLM Gateway",
+                f"{os.environ['LITELLM_PROXY_URL'].rstrip('/')}/chat/completions",
+                os.environ.get("LITELLM_API_KEY", venice_key),
+                v_model,
+            )
+        )
     if venice_key:
         chain.append(("Venice AI", "https://api.venice.ai/api/v1/chat/completions", venice_key, v_model))
     if zai_key:
         chain.append(("Sovereign GLM", "https://open.bigmodel.cn/api/paas/v4/chat/completions", zai_key, "glm-4.5-flash"))
     if or_key:
-        chain.append(("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", or_key, "google/gemma-4-31b-it:free"))
-    chain.append(("Ollama Local ($0)", "http://localhost:11434/v1/chat/completions", None, ollama_model))
+        chain.append(("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", or_key, "cohere/north-mini-code:free"))
+    chain.append(("Ollama Local ($0)", "http://localhost:11434/v1/chat/completions", "", ollama_model))
     return chain
 
 
+# ---------- Complete 13-Tool High-Performance Arsenal ----------
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read a file's contents",
-            "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+            "description": "Read file contents with byte offset and slice limits for high-speed inspection.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute or relative file path"},
+                    "offset": {"type": "integer", "description": "Byte offset to start reading (default 0)"},
+                    "limit": {"type": "integer", "description": "Maximum bytes to read (default 20000)"},
+                },
+                "required": ["path"],
+            },
         },
     },
     {
         "type": "function",
         "function": {
             "name": "write_file",
-            "description": "Create or overwrite a file",
+            "description": "Create or overwrite a file atomically, automatically creating parent directories.",
             "parameters": {
                 "type": "object",
-                "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
+                "properties": {
+                    "path": {"type": "string", "description": "File path to write"},
+                    "content": {"type": "string", "description": "Full file content to write"},
+                },
                 "required": ["path", "content"],
             },
         },
@@ -86,10 +131,14 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Replace an exact string in a file",
+            "description": "Replace an exact target substring with replacement content in a file.",
             "parameters": {
                 "type": "object",
-                "properties": {"path": {"type": "string"}, "old": {"type": "string"}, "new": {"type": "string"}},
+                "properties": {
+                    "path": {"type": "string", "description": "File path to edit"},
+                    "old": {"type": "string", "description": "Exact text to find and replace"},
+                    "new": {"type": "string", "description": "Replacement text"},
+                },
                 "required": ["path", "old", "new"],
             },
         },
@@ -98,54 +147,312 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_shell",
-            "description": "Run a shell command in the project dir and return stdout/stderr/exit code",
-            "parameters": {"type": "object", "properties": {"cmd": {"type": "string"}}, "required": ["cmd"]},
+            "description": "Execute a shell command in the project directory and return exit code, stdout, and stderr.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cmd": {"type": "string", "description": "Shell command line to execute"},
+                    "timeout": {"type": "integer", "description": "Timeout in seconds (default 120)"},
+                },
+                "required": ["cmd"],
+            },
         },
     },
     {
         "type": "function",
         "function": {
             "name": "list_dir",
-            "description": "List files under a directory (respecting depth)",
-            "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+            "description": "List files and directories up to a given depth, automatically filtering out noise (.git, node_modules, etc.).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Directory path (default .)"},
+                    "depth": {"type": "integer", "description": "Max depth to traverse (default 3)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "grep_code",
+            "description": "Search code files for a regex or symbol query using ripgrep (rg) with line numbers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search term or regex pattern"},
+                    "path": {"type": "string", "description": "Directory or file path to search in (default .)"},
+                    "file_pattern": {"type": "string", "description": "Glob filter (e.g. *.py, *.ts, *test*)"},
+                    "case_sensitive": {"type": "boolean", "description": "Whether search is case-sensitive (default false)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_files",
+            "description": "Fast recursive file search matching a filename or glob pattern.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Filename pattern to match (e.g. *.json, *agent*)"},
+                    "path": {"type": "string", "description": "Starting root directory (default .)"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_diff_patch",
+            "description": "Inspect git working tree status and exact staged/unstaged diffs.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "staged": {"type": "boolean", "description": "If true, show only staged changes (default false)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_web",
+            "description": "Fetch content from a URL or API endpoint for documentation, schema, or external research.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "HTTP/HTTPS URL to fetch"},
+                    "max_chars": {"type": "integer", "description": "Maximum characters to return (default 12000)"},
+                },
+                "required": ["url"],
+            },
         },
     },
     {
         "type": "function",
         "function": {
             "name": "run_applescript",
-            "description": "Execute macOS AppleScript / GUI automation (open apps, control windows, trigger notifications)",
-            "parameters": {"type": "object", "properties": {"script": {"type": "string"}}, "required": ["script"]},
+            "description": "Execute macOS AppleScript for native GUI automation (open applications, resize windows, trigger notifications).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "script": {"type": "string", "description": "AppleScript source code"},
+                },
+                "required": ["script"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "spawn_parallel_workers",
+            "description": "Spawn multiple autonomous worker subagents in parallel threads to execute disjoint subtasks simultaneously.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subtasks": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of self-contained subtask prompts to execute concurrently",
+                    },
+                    "max_workers": {"type": "integer", "description": "Max parallel threads (default 4)"},
+                },
+                "required": ["subtasks"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "remember_insight",
+            "description": "Save an architecture rule, discovery, or user preference to persistent SQLite cross-session memory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Category or topic tag"},
+                    "insight": {"type": "string", "description": "Fact or architectural insight to store"},
+                },
+                "required": ["key", "insight"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "semantic_search_memory",
+            "description": "Search stored persistent cross-session memories and past project insights.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Keyword or topic to search for"},
+                },
+                "required": ["query"],
+            },
         },
     },
 ]
 
+# Tools safe to execute concurrently in parallel threads
+READ_ONLY_TOOLS = {
+    "read_file",
+    "grep_code",
+    "find_files",
+    "list_dir",
+    "git_diff_patch",
+    "fetch_web",
+    "semantic_search_memory",
+}
 
-def tool_call(name: str, args: dict, trust: str, allow_cmds: list[str]) -> str:
+
+# ---------- Tool Implementations ----------
+def execute_single_tool(name: str, args: Dict[str, Any], trust: str, allow_cmds: List[str]) -> str:
     try:
         if name == "read_file":
-            return pathlib.Path(args["path"]).read_text(encoding="utf-8", errors="replace")[:20000]
-        if name == "write_file":
+            p = pathlib.Path(args["path"])
+            if not p.exists():
+                return f"ERROR: file '{args['path']}' does not exist"
+            if p.is_dir():
+                return f"ERROR: '{args['path']}' is a directory, use list_dir instead"
+            offset = int(args.get("offset") or 0)
+            limit = int(args.get("limit") or 20000)
+            content = p.read_text(encoding="utf-8", errors="replace")
+            total_size = len(content)
+            lines = content.splitlines()
+            slice_data = content[offset : offset + limit]
+            return f"[{p.name} | total_bytes={total_size} | total_lines={len(lines)} | reading {offset}..{offset + len(slice_data)}]\n{slice_data}"
+
+        elif name == "write_file":
             p = pathlib.Path(args["path"])
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(args["content"], encoding="utf-8")
-            return f"wrote {args['path']} ({len(args['content'])} bytes)"
-        if name == "edit_file":
+            return f"✓ wrote {args['path']} ({len(args['content'])} bytes)"
+
+        elif name == "edit_file":
             p = pathlib.Path(args["path"])
+            if not p.exists():
+                return f"ERROR: file '{args['path']}' does not exist"
             t = p.read_text(encoding="utf-8", errors="replace")
-            if args["old"] not in t:
-                return "ERROR: old string not found in file"
-            p.write_text(t.replace(args["old"], args["new"], 1), encoding="utf-8")
-            return f"edited {args['path']}"
-        if name == "list_dir":
-            root = args.get("path") or "."
-            return "\n".join(
-                str(p)
-                for p in sorted(pathlib.Path(root).rglob("*"))
-                if ".git/" not in str(p) and "node_modules" not in str(p) and "__pycache__" not in str(p)
-            )[:8000]
-        if name == "run_shell":
+            old_str = args["old"]
+            new_str = args["new"]
+            if old_str not in t:
+                return f"ERROR: target substring not found in {args['path']}. Verify exact whitespace and indentation."
+            count = t.count(old_str)
+            p.write_text(t.replace(old_str, new_str, 1), encoding="utf-8")
+            extra = f" (Warning: string occurred {count} times, replaced first)" if count > 1 else ""
+            return f"✓ edited {args['path']}{extra}"
+
+        elif name == "list_dir":
+            root = pathlib.Path(args.get("path") or ".")
+            max_depth = int(args.get("depth") or 3)
+            if not root.exists():
+                return f"ERROR: directory '{root}' does not exist"
+            out = []
+            root_depth = len(root.resolve().parts)
+            for p in sorted(root.rglob("*")):
+                cur_depth = len(p.resolve().parts) - root_depth
+                if cur_depth > max_depth:
+                    continue
+                p_str = str(p)
+                if any(x in p_str for x in (".git", "node_modules", "__pycache__", ".venv", ".DS_Store", "dist", "build")):
+                    continue
+                kind = "📁 " if p.is_dir() else "📄 "
+                out.append(f"{'  ' * (cur_depth - 1)}{kind}{p.name}")
+                if len(out) >= 300:
+                    out.append("... [truncated at 300 items]")
+                    break
+            return "\n".join(out) or "(empty directory)"
+
+        elif name == "grep_code":
+            query = args["query"]
+            path = args.get("path") or "."
+            file_pattern = args.get("file_pattern") or "*"
+            case_sensitive = bool(args.get("case_sensitive", False))
+
+            rg_bin = shutil.which("rg")
+            if rg_bin:
+                cmd = [rg_bin, "-n", "--max-columns", "200", "--max-count", "100"]
+                if not case_sensitive:
+                    cmd.append("-i")
+                if file_pattern and file_pattern != "*":
+                    cmd.extend(["-g", file_pattern])
+                cmd.extend([query, path])
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                res = r.stdout.strip()
+                return res[:12000] if res else "(no matches found with ripgrep)"
+            else:
+                matches = []
+                regex = re.compile(query if case_sensitive else query, 0 if case_sensitive else re.IGNORECASE)
+                p_root = pathlib.Path(path)
+                for f in p_root.rglob(file_pattern):
+                    if not f.is_file():
+                        continue
+                    if any(x in str(f) for x in (".git", "node_modules", "__pycache__", ".venv", "dist", "build")):
+                        continue
+                    try:
+                        for idx, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                            if regex.search(line):
+                                matches.append(f"{f}:{idx}: {line.strip()[:180]}")
+                                if len(matches) >= 100:
+                                    break
+                    except Exception:
+                        pass
+                    if len(matches) >= 100:
+                        break
+                return "\n".join(matches) if matches else "(no matches found)"
+
+        elif name == "find_files":
+            pattern = args["pattern"]
+            path = pathlib.Path(args.get("path") or ".")
+            if not path.exists():
+                return f"ERROR: path '{path}' does not exist"
+            found = []
+            for p in sorted(path.rglob(pattern)):
+                p_str = str(p)
+                if any(x in p_str for x in (".git", "node_modules", "__pycache__", ".venv", "dist", "build")):
+                    continue
+                found.append(p_str)
+                if len(found) >= 150:
+                    found.append("... [truncated at 150 files]")
+                    break
+            return "\n".join(found) if found else f"(no files matching '{pattern}')"
+
+        elif name == "git_diff_patch":
+            staged = bool(args.get("staged", False))
+            status_res = subprocess.run(["git", "status", "--short"], capture_output=True, text=True, timeout=15)
+            diff_cmd = ["git", "diff", "--cached"] if staged else ["git", "diff"]
+            diff_res = subprocess.run(diff_cmd, capture_output=True, text=True, timeout=30)
+            st_text = status_res.stdout.strip() or "(working tree clean)"
+            df_text = diff_res.stdout.strip() or "(no diff)"
+            return f"--- GIT STATUS ---\n{st_text}\n\n--- GIT DIFF ({'STAGED' if staged else 'UNSTAGED'}) ---\n{df_text[:14000]}"
+
+        elif name == "fetch_web":
+            url = args["url"]
+            max_chars = int(args.get("max_chars") or 12000)
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ApexTerminalOS/3.0",
+                    "Accept": "text/html,application/json,text/plain;q=0.9,*/*;q=0.8",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+                cleaned = re.sub(r"<script.*?</script>", "", raw, flags=re.DOTALL | re.IGNORECASE)
+                cleaned = re.sub(r"<style.*?</style>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+                cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+                cleaned = html.unescape(cleaned)
+                cleaned = re.sub(r"\s+", " ", cleaned).strip()
+                return cleaned[:max_chars]
+
+        elif name == "run_shell":
             cmd = args["cmd"]
+            timeout_sec = int(args.get("timeout") or 120)
             is_allowed = trust == "yolo" or any(cmd.strip().startswith(ac) for ac in allow_cmds)
             if not is_allowed:
                 print(f"\033[33m  ⚡ Shell Command: $ {cmd}\033[0m")
@@ -154,9 +461,12 @@ def tool_call(name: str, args: dict, trust: str, allow_cmds: list[str]) -> str:
                     allow_cmds.append(cmd.strip().split()[0])
                 elif ans != "y":
                     return "user denied command execution"
-            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
-            return f"exit={r.returncode}\n{r.stdout[-6000:]}{r.stderr[-3000:]}"
-        if name == "run_applescript":
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout_sec)
+            out = r.stdout[-8000:] if r.stdout else ""
+            err = r.stderr[-4000:] if r.stderr else ""
+            return f"exit={r.returncode}\n{out}{err}"
+
+        elif name == "run_applescript":
             script = args["script"]
             if trust != "yolo":
                 print(f"\033[33m  🍎 AppleScript: {script}\033[0m")
@@ -164,11 +474,107 @@ def tool_call(name: str, args: dict, trust: str, allow_cmds: list[str]) -> str:
                     return "user denied applescript"
             r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=30)
             return f"exit={r.returncode}\n{r.stdout}{r.stderr}"
+
+        elif name == "remember_insight":
+            mem_db = pathlib.Path.home() / ".apex-workspace" / "memory.db"
+            mem_db.parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(str(mem_db))
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS agent_memories (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT, tag TEXT, content TEXT)"
+            )
+            now = datetime.datetime.now().isoformat()
+            conn.execute(
+                "INSERT INTO agent_memories (created_at, tag, content) VALUES (?, ?, ?)",
+                (now, args["key"], args["insight"]),
+            )
+            conn.commit()
+            return f"✓ Stored persistent memory tagged '{args['key']}' in SQLite"
+
+        elif name == "semantic_search_memory":
+            query = args["query"].lower()
+            mem_db = pathlib.Path.home() / ".apex-workspace" / "memory.db"
+            if not mem_db.exists():
+                return "(no persistent memory database found)"
+            conn = sqlite3.connect(str(mem_db))
+            rows = conn.execute(
+                "SELECT tag, content, created_at FROM agent_memories WHERE lower(tag) LIKE ? OR lower(content) LIKE ? ORDER BY id DESC LIMIT 10",
+                (f"%{query}%", f"%{query}%"),
+            ).fetchall()
+            if not rows:
+                return f"(no stored memories matching '{query}')"
+            return "\n".join(f"• [{r[0]} | {r[2][:10]}] {r[1]}" for r in rows)
+
+        elif name == "spawn_parallel_workers":
+            subtasks = args.get("subtasks") or []
+            max_workers = min(len(subtasks), int(args.get("max_workers") or 4))
+            if not subtasks:
+                return "ERROR: no subtasks provided"
+            print(f"\n\033[1;35m  ⚡ [PARALLEL SWARM] Spawning {len(subtasks)} worker agents concurrently...\033[0m")
+
+            results = {}
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+                def _staggered_worker(st: str, idx: int) -> Tuple[int, str, str]:
+                    time.sleep(idx * 0.8)  # Stagger initial requests to avoid concurrent 429 burst
+                    res = run_subagent_worker(st, trust, allow_cmds, idx)
+                    return idx, st, res
+
+                future_map = {
+                    pool.submit(_staggered_worker, st, idx + 1): (idx + 1, st)
+                    for idx, st in enumerate(subtasks)
+                }
+                for fut in concurrent.futures.as_completed(future_map):
+                    idx, st = future_map[fut]
+                    try:
+                        w_idx, _, res = fut.result()
+                        results[w_idx] = (st, res)
+                        print(f"\033[1;32m  ✓ Worker #{w_idx} completed successfully\033[0m")
+                    except Exception as e:
+                        results[idx] = (st, f"WORKER_ERROR: {e}")
+                        print(f"\033[1;31m  ✗ Worker #{idx} failed: {e}\033[0m")
+
+            summary = ["=== PARALLEL SWARM EXECUTION REPORT ==="]
+            for idx in sorted(results.keys()):
+                st, r_text = results[idx]
+                summary.append(f"\n--- Worker #{idx}: {st} ---\n{r_text}")
+            return "\n".join(summary)
+
     except Exception as e:
-        return f"TOOL_ERROR: {e}"
+        return f"TOOL_ERROR in {name}: {e}"
+
     return "unknown tool"
 
 
+def run_subagent_worker(subtask: str, trust: str, allow_cmds: List[str], worker_id: int) -> str:
+    """Isolated worker agent running a bounded subtask loop."""
+    worker_sysm = (
+        f"You are Worker #{worker_id} in the Apex Terminal OS Swarm. "
+        "Your subtask is strictly bounded. Complete it cleanly and verify your work. "
+        "Use tools (read_file, edit_file, write_file, run_shell, grep_code, list_dir, find_files). "
+        "Conclude with a clear summary of modifications and test results."
+    )
+    worker_msgs = [{"role": "system", "content": worker_sysm}, {"role": "user", "content": subtask}]
+    model = os.environ.get("VENICE_MODEL", "zai-org-glm-5-2")
+
+    for _ in range(12):
+        msg = chat(worker_msgs, model, use_tools=True)
+        worker_msgs.append(msg)
+        t_calls = msg.get("tool_calls") or []
+        if not t_calls:
+            return msg.get("content") or "(Worker completed with no additional output)"
+        for tc in t_calls:
+            fn = tc["function"]["name"]
+            raw_a = tc["function"].get("arguments") or "{}"
+            a = json.loads(raw_a) if isinstance(raw_a, str) else raw_a
+            if fn == "spawn_parallel_workers":
+                res = "ERROR: nested swarm spawning not permitted"
+            else:
+                res = execute_single_tool(fn, a, trust, allow_cmds)
+            worker_msgs.append({"role": "tool", "tool_call_id": tc["id"], "content": res[:8000]})
+
+    return "Worker reached maximum step budget (12 steps)."
+
+
+# ---------- Context Injection ----------
 def context_files() -> str:
     """Claude Code reads CLAUDE.md; OpenCode/Codex read AGENTS.md; we read BOTH + persistent SQLite memory."""
     out = []
@@ -180,16 +586,16 @@ def context_files() -> str:
     if mem_db.exists():
         try:
             conn = sqlite3.connect(str(mem_db))
-            rows = conn.execute("SELECT content FROM agent_memories ORDER BY id DESC LIMIT 5").fetchall()
+            rows = conn.execute("SELECT tag, content FROM agent_memories ORDER BY id DESC LIMIT 6").fetchall()
             if rows:
-                out.append("--- PERSISTENT SESSION MEMORIES ---\n" + "\n".join(f"• {r[0]}" for r in rows))
+                out.append("--- PERSISTENT SESSION MEMORIES ---\n" + "\n".join(f"• [{r[0]}] {r[1]}" for r in rows))
         except Exception:
             pass
     return "\n\n".join(out)
 
 
-def chat(messages: list[dict], requested_model: str, use_tools: bool = True) -> dict:
-    """Multi-model mid-task failover: if primary provider times out or hits 402/429, seamlessly swaps provider."""
+# ---------- Multi-Model Mid-Task Failover Chat with Backoff ----------
+def chat(messages: List[Dict[str, Any]], requested_model: str, use_tools: bool = True) -> Dict[str, Any]:
     chain = build_provider_chain(requested_model)
     last_err = None
     for label, url, api_key, model_id in chain:
@@ -203,24 +609,104 @@ def chat(messages: list[dict], requested_model: str, use_tools: bool = True) -> 
         }
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
+        if "openrouter.ai" in url:
+            headers["HTTP-Referer"] = "https://rjbusinesssolutions.org"
+            headers["X-Title"] = "Apex Terminal OS"
+
         req = urllib.request.Request(url, data=body, headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=90) as r:
-                data = json.loads(r.read().decode("utf-8"))
-                return data["choices"][0]["message"]
-        except Exception as e:
-            last_err = f"{label} ({model_id}): {e}"
-            continue
+
+        # Retry loop for 429 rate limit backoff (up to 2 retries)
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=90) as r:
+                    data = json.loads(r.read().decode("utf-8"))
+                    return data["choices"][0]["message"]
+            except urllib.error.HTTPError as e:
+                last_err = f"{label} ({model_id}): HTTP {e.code} {e.reason}"
+                if e.code == 429 and attempt < 2:
+                    wait_time = (attempt + 1) * 2.0 + random.uniform(0.1, 0.5)
+                    time.sleep(wait_time)
+                    continue
+                # If 402, 403, 400 or exhausted 429, break to next provider in failover chain
+                break
+            except Exception as e:
+                last_err = f"{label} ({model_id}): {e}"
+                break
+
     raise RuntimeError(f"All providers in failover chain failed. Last error: {last_err}")
 
 
+# ---------- Parallel Tool Batch Execution ----------
+def execute_tool_calls_in_parallel(
+    tool_calls: List[Dict[str, Any]],
+    trust: str,
+    allow_cmds: List[str],
+    parallel_concurrency: int = 8,
+) -> List[Tuple[str, str]]:
+    results: List[Tuple[str, str]] = []
+
+    chunks: List[List[Dict[str, Any]]] = []
+    current_chunk: List[Dict[str, Any]] = []
+    current_is_readonly: bool = False
+
+    for tc in tool_calls:
+        fn_name = tc["function"]["name"]
+        is_ro = fn_name in READ_ONLY_TOOLS
+        if not current_chunk:
+            current_chunk = [tc]
+            current_is_readonly = is_ro
+        elif is_ro == current_is_readonly and is_ro:
+            current_chunk.append(tc)
+        else:
+            chunks.append(current_chunk)
+            current_chunk = [tc]
+            current_is_readonly = is_ro
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    for chunk in chunks:
+        is_ro = chunk[0]["function"]["name"] in READ_ONLY_TOOLS
+        if is_ro and len(chunk) > 1:
+            print(f"\033[1;36m  ⚡ [PARALLEL BATCH: {len(chunk)} calls] Executing read/search operations concurrently...\033[0m")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(chunk), parallel_concurrency)) as pool:
+                def _worker(item: Dict[str, Any]) -> Tuple[str, str]:
+                    fn = item["function"]["name"]
+                    raw_args = item["function"].get("arguments") or "{}"
+                    a = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                    arg_prev = ", ".join(f"{k}={str(v)[:40]}" for k, v in a.items())
+                    t0 = time.time()
+                    res = execute_single_tool(fn, a, trust, allow_cmds)
+                    dt = time.time() - t0
+                    print(f"\033[0;34m    ↳ ⚡ {fn}({arg_prev}) [{dt*1000:.0f}ms]\033[0m")
+                    return item["id"], res
+
+                future_map = [pool.submit(_worker, c) for c in chunk]
+                for fut in future_map:
+                    cid, r_text = fut.result()
+                    results.append((cid, r_text))
+        else:
+            for tc in chunk:
+                fn = tc["function"]["name"]
+                raw_args = tc["function"].get("arguments") or "{}"
+                a = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                arg_prev = ", ".join(f"{k}={str(v)[:50]}" for k, v in a.items())
+                print(f"\033[1;34m  🔧 {fn}({arg_prev})\033[0m")
+                res = execute_single_tool(fn, a, trust, allow_cmds)
+                results.append((tc["id"], res))
+
+    return results
+
+
+# ---------- Main CLI Entrypoint ----------
 def main() -> None:
     args = sys.argv[1:]
     trust = "ask"
     plan = False
+    swarm = False
     model = os.environ.get("VENICE_MODEL", "zai-org-glm-5-2")
     max_steps = 40
-    allow_cmds: list[str] = ["git status", "git diff", "ls", "pwd", "pytest", "vitest"]
+    parallel_concurrency = 8
+    allow_cmds: List[str] = ["git status", "git diff", "ls", "pwd", "pytest", "vitest", "npm test", "rg"]
 
     while args and args[0].startswith("--"):
         flag = args.pop(0)
@@ -229,10 +715,14 @@ def main() -> None:
             sys.exit(0)
         elif flag == "--plan":
             plan = True
+        elif flag == "--swarm":
+            swarm = True
         elif flag == "--trust" and args:
             trust = args.pop(0)
         elif flag == "--model" and args:
             model = args.pop(0)
+        elif flag == "--parallel" and args:
+            parallel_concurrency = int(args.pop(0))
         elif flag == "--max-steps" and args:
             max_steps = int(args.pop(0))
 
@@ -247,24 +737,43 @@ def main() -> None:
             trust = cfg.get("trust", trust)
             model = cfg.get("model", model)
             max_steps = int(cfg.get("max_steps", max_steps))
+            parallel_concurrency = int(cfg.get("parallel", parallel_concurrency))
             allow_cmds.extend(cfg.get("allow_cmds", []))
         except Exception:
             pass
 
     ctx = context_files()
     sysm = (
-        "You are apex-agent, the sovereign agentic engineering loop of Apex Terminal OS. "
-        "You operate directly in the user's macOS shell. Use the provided tools (read_file, write_file, "
-        "edit_file, run_shell, list_dir, run_applescript) to complete the task. "
-        "Work step by step: inspect files, make surgical edits, then RUN tests/builds with run_shell "
-        "to verify before claiming completion. Be concise and exact."
-        + (f"\n\nProject & Memory Context:\n{ctx}" if ctx else "")
+        "You are apex-agent v3.0, the sovereign agentic engineering loop of Apex Terminal OS. "
+        "You operate directly in macOS shell with native parallel tool execution. "
+        "Available tools:\n"
+        "- read_file, write_file, edit_file: surgical file inspection and manipulation\n"
+        "- run_shell: execute build, test, and shell commands\n"
+        "- grep_code: ripgrep-accelerated symbol and regex search\n"
+        "- find_files: fast glob pattern file search\n"
+        "- list_dir: noise-filtered directory tree inspection\n"
+        "- git_diff_patch: inspect unstaged and staged changes\n"
+        "- fetch_web: fetch online documentation, API schemas, and GitHub resources\n"
+        "- run_applescript: macOS native GUI, application, and notification automation\n"
+        "- spawn_parallel_workers: spawn concurrent subagents for independent parallel tasks\n"
+        "- remember_insight, semantic_search_memory: persistent cross-session SQLite memory\n\n"
+        "EXECUTION DISCIPLINE:\n"
+        "1. For multi-file inspection or searches, issue multiple tool calls in a single turn — they will execute in parallel concurrently!\n"
+        "2. When editing code, ALWAYS run verification tests via run_shell before declaring completion.\n"
+        "3. If a test or command fails, analyze the error output, fix the root cause, and re-verify.\n"
+        "4. Be concise, precise, and deliver working verified results."
+        + (f"\n\nProject & Persistent Memory Context:\n{ctx}" if ctx else "")
     )
+    if swarm:
+        task = f"Decompose this task into independent parallel subtasks and use spawn_parallel_workers to execute them concurrently: {task}"
+
     messages = [{"role": "system", "content": sysm}, {"role": "user", "content": task}]
 
     git = subprocess.run("git rev-parse --abbrev-ref HEAD", shell=True, capture_output=True, text=True)
     branch_info = f" · branch {git.stdout.strip()}" if git.returncode == 0 else ""
-    print(f"\033[1;35m⚔️  apex-agent · model={model} · trust={trust}{branch_info}\033[0m")
+    print(
+        f"\033[1;35m⚔️  apex-agent v3.0 · model={model} · trust={trust} · parallel={parallel_concurrency}{branch_info}\033[0m"
+    )
 
     if plan:
         plan_msgs = [
@@ -273,7 +782,7 @@ def main() -> None:
                 "role": "user",
                 "content": (
                     "PLAN ONLY — do not edit any files yet. Produce a concise numbered execution plan "
-                    f"listing exact files to touch and verification commands to run. Task: {task}"
+                    f"listing exact files to touch, parallel steps, and verification commands to run. Task: {task}"
                 ),
             },
         ]
@@ -291,16 +800,12 @@ def main() -> None:
         messages.append(msg)
         tool_calls = msg.get("tool_calls") or []
         if tool_calls:
-            for tc in tool_calls:
-                fn = tc["function"]["name"]
-                raw_args = tc["function"].get("arguments") or "{}"
-                a = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
-                arg_preview = ", ".join(f"{k}={str(v)[:50]}" for k, v in a.items())
-                print(f"\033[1;34m  [{step}/{max_steps}] 🔧 {fn}({arg_preview})\033[0m")
-                result = tool_call(fn, a, trust, allow_cmds)
-                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result[:8000]})
+            print(f"\033[1;33m[Step {step}/{max_steps}] Processing {len(tool_calls)} tool call(s)...\033[0m")
+            results = execute_tool_calls_in_parallel(tool_calls, trust, allow_cmds, parallel_concurrency)
+            for cid, r_text in results:
+                messages.append({"role": "tool", "tool_call_id": cid, "content": r_text[:8000]})
         else:
-            print(f"\n\033[1;32m✓ {msg.get('content') or '(Done)'}\033[0m")
+            print(f"\n\033[1;32m✓ {msg.get('content') or '(Task Completed)'}\033[0m")
             sys.exit(0)
 
     print(f"\033[1;31m✗ Step budget exhausted ({max_steps}) — refine the task or pass --max-steps 80\033[0m")

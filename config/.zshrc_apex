@@ -111,3 +111,11 @@ if [[ -o interactive ]] && [[ -t 0 ]] && [[ -t 1 ]] && [[ -z "$APEX_MENU_SHOWN" 
     export APEX_MENU_SHOWN=1
     "$HOME/.local/bin/venice" --startup-menu
 fi
+
+# --- apex-agent v3.0 wiring (Claude-Code-Killer Agentic & Swarm Loop) ---
+export VENICE_MODEL="${VENICE_MODEL:-zai-org-glm-5-2}"
+alias ax="noglob apex-agent"
+alias axp="noglob apex-agent --plan"
+alias axy="noglob apex-agent --trust yolo"
+alias axpar="noglob apex-agent --parallel 8"
+alias axswarm="noglob apex-agent --swarm"

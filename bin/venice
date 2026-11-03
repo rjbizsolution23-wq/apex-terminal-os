@@ -839,7 +839,7 @@ def interactive_menu(loop_forever: bool = True):
             agent_bin = Path.home() / ".local/bin/apex-agent"
             if not agent_bin.exists():
                 agent_bin = Path(__file__).resolve().parent / "apex-agent"
-            mode_sel = input("\033[1;35m⚔️  [1] Standard (ask)  [2] Plan First (--plan)  [3] Hands-Free (--trust yolo)  [4] $0 Ollama (--model ollama) > \033[0m").strip() or "1"
+            mode_sel = input("\033[1;35m⚔️  [1] Standard (ask)  [2] Plan First (--plan)  [3] Hands-Free (--trust yolo)  [4] $0 Ollama (--model ollama)  [5] Parallel Swarm (--swarm) > \033[0m").strip() or "1"
             task_str = input("\033[1;36m⚔️  Enter coding/system task for apex-agent > \033[0m").strip()
             if task_str:
                 cmd = [sys.executable, str(agent_bin)]
@@ -849,6 +849,8 @@ def interactive_menu(loop_forever: bool = True):
                     cmd.extend(["--trust", "yolo"])
                 elif mode_sel == "4":
                     cmd.extend(["--model", "ollama"])
+                elif mode_sel == "5":
+                    cmd.extend(["--swarm", "--trust", "yolo"])
                 cmd.append(task_str)
                 subprocess.run(cmd)
         else:
