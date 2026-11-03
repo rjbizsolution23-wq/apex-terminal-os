@@ -716,6 +716,7 @@ def print_command_center_banner():
     print("\033[1;36m║\033[0m  \033[1;32m[14]\033[0m 📚 \033[1;37mRAG Corpus & Persistent Memory\033[0m(Ask 500+ command docs + mem0 SQLite)\033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[15]\033[0m 🔌 \033[1;37mModel Context Protocol (MCP)\033[0m  (Register/Run Apex MCP Server)       \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;32m[16]\033[0m 🖥️  \033[1;37mCoding Agents & Zellij Layout\033[0m (OpenCode, Aider+Venice, Zellij OS)  \033[1;36m║\033[0m")
+    print("\033[1;36m║\033[0m  \033[1;32m[17]\033[0m ⚔️  \033[1;37mApex-Agent (Claude-Code Loop)\033[0m (Read→Edit→Test Loop · Plan / Yolo)  \033[1;36m║\033[0m")
     print("\033[1;36m║\033[0m  \033[1;33m[0 / ENTER]\033[0m 💻 \033[0;37mDrop straight to normal Zsh terminal prompt (Type `m` anytime)\033[0m \033[1;36m║\033[0m")
     print("\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m")
 
@@ -723,7 +724,7 @@ def interactive_menu(loop_forever: bool = True):
     while True:
         print_command_center_banner()
         try:
-            choice = input("\033[1;32m⚡ Pick Ability [1-16], press ENTER for Shell, or type any request > \033[0m").strip()
+            choice = input("\033[1;32m⚡ Pick Ability [1-17], press ENTER for Shell, or type any request > \033[0m").strip()
         except (KeyboardInterrupt, EOFError):
             print("")
             break
@@ -834,6 +835,22 @@ def interactive_menu(loop_forever: bool = True):
                 if not kg_bin.exists():
                     kg_bin = Path(__file__).resolve().parent / "apex-keygen-server"
                 subprocess.run([sys.executable, str(kg_bin)])
+        elif choice == "17":
+            agent_bin = Path.home() / ".local/bin/apex-agent"
+            if not agent_bin.exists():
+                agent_bin = Path(__file__).resolve().parent / "apex-agent"
+            mode_sel = input("\033[1;35m⚔️  [1] Standard (ask)  [2] Plan First (--plan)  [3] Hands-Free (--trust yolo)  [4] $0 Ollama (--model ollama) > \033[0m").strip() or "1"
+            task_str = input("\033[1;36m⚔️  Enter coding/system task for apex-agent > \033[0m").strip()
+            if task_str:
+                cmd = [sys.executable, str(agent_bin)]
+                if mode_sel == "2":
+                    cmd.append("--plan")
+                elif mode_sel == "3":
+                    cmd.extend(["--trust", "yolo"])
+                elif mode_sel == "4":
+                    cmd.extend(["--model", "ollama"])
+                cmd.append(task_str)
+                subprocess.run(cmd)
         else:
             # User typed natural language directly into the menu prompt!
             execute_request(choice)

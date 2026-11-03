@@ -100,6 +100,12 @@ alias aicommit='git diff --cached | venice-cheap "Write a concise conventional c
 alias ucommit='git diff --cached | venice-u "Write a clean conventional commit message for this diff"'
 alias uaudit='git diff | venice-ab "Perform an aggressive, unfiltered code audit for security flaws and logical bugs"'
 
+# --- ⚔️ APEX-AGENT (CLAUDE-CODE-KILLER AGENTIC LOOP) ---
+export VENICE_MODEL="${VENICE_MODEL:-zai-org-glm-5-2}"   # or leave unset for $0 Ollama local mode
+alias ax="noglob apex-agent"                             # Interactive agentic coding loop (read -> edit -> test)
+axp() { apex-agent --plan "$@"; }                        # Plan first, execute on approval
+axy() { apex-agent --trust yolo "$@"; }                  # Hands-free zero-nag mode
+
 # --- 🚀 AUTO-LAUNCH INTERACTIVE NUMBERED ABILITY MENU ON TERMINAL START ---
 if [[ -o interactive ]] && [[ -t 0 ]] && [[ -t 1 ]] && [[ -z "$APEX_MENU_SHOWN" ]] && [[ "$TERM" != "dumb" ]]; then
     export APEX_MENU_SHOWN=1

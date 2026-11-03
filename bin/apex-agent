@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""
+apex-agent — Claude-Code-style agentic coding engine for Apex Terminal OS
+Works with any OpenAI-compatible endpoint: Venice AI, Z.ai GLM, OpenRouter, Ollama (localhost:11434), LiteLLM.
+
+Usage:
+  apex-agent "fix the failing test in tests/"
+  apex-agent --plan "add rate limiting to the API"      # plan first, execute on approval
+  apex-agent --trust yolo "refactor the auth module"    # no confirmation prompts
+  apex-agent --model ollama "explain this codebase"     # $0 local mode
+
+Aliases (wired in ~/.zshrc):
+  ax  "task"   -> apex-agent "task"
+  axp "task"   -> apex-agent --plan "task"
+  axy "task"   -> apex-agent --trust yolo "task"
+
+Config (optional) in project root `.apexagent` (JSON):
+  {"model": "zai-org-glm-5-2", "trust": "ask", "max_steps": 40, "allow_cmds": ["pytest", "npm test", "git status"]}
+"""
+
+import json
+import os
+import pathlib
+import sqlite3
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+# ---------- Load ~/.apex-workspace/.env if present ----------
+ENV_FILE = pathlib.Path.home() / ".apex-workspace" / ".env"
+if ENV_FILE.exists():
+    for _line in ENV_FILE.read_text(encoding="utf-8", errors="replace").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
+
+# ---------- Multi-Provider Failover Chain (Venice -> GLM -> OpenRouter -> Ollama $0) ----------
+def build_provider_chain(requested_model: str = ""):
+    venice_key = os.environ.get("VENICE_API_KEY", "")
+    zai_key = os.environ.get("Z_AI_API_KEY", "c5c2fd9ce8ea4fc7b3efadfdbf43f698.b1U1tW9t9oIdb37f")
+    or_key = os.environ.get("OPENROUTER_API_KEY", "")
+    v_model = requested_model if (requested_model and requested_model != "ollama") else os.environ.get("VENICE_MODEL", "zai-org-glm-5-2")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:14b")
+
+    if requested_model == "ollama":
+        return [("Ollama Local ($0)", "http://localhost:11434/v1/chat/completions", None, ollama_model)]
+
+    chain = []
+    if os.environ.get("LITELLM_PROXY_URL"):
+        chain.append(("LiteLLM Gateway", f"{os.environ['LITELLM_PROXY_URL'].rstrip('/')}/chat/completions", os.environ.get("LITELLM_API_KEY", venice_key), v_model))
+    if venice_key:
+        chain.append(("Venice AI", "https://api.venice.ai/api/v1/chat/completions", venice_key, v_model))
+    if zai_key:
+        chain.append(("Sovereign GLM", "https://open.bigmodel.cn/api/paas/v4/chat/completions", zai_key, "glm-4.5-flash"))
+    if or_key:
+        chain.append(("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", or_key, "google/gemma-4-31b-it:free"))
+    chain.append(("Ollama Local ($0)", "http://localhost:11434/v1/chat/completions", None, ollama_model))
+    return chain
+
+
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read a file's contents",
+            "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_file",
+            "description": "Create or overwrite a file",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
+                "required": ["path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_file",
+            "description": "Replace an exact string in a file",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}, "old": {"type": "string"}, "new": {"type": "string"}},
+                "required": ["path", "old", "new"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_shell",
+            "description": "Run a shell command in the project dir and return stdout/stderr/exit code",
+            "parameters": {"type": "object", "properties": {"cmd": {"type": "string"}}, "required": ["cmd"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_dir",
+            "description": "List files under a directory (respecting depth)",
+            "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_applescript",
+            "description": "Execute macOS AppleScript / GUI automation (open apps, control windows, trigger notifications)",
+            "parameters": {"type": "object", "properties": {"script": {"type": "string"}}, "required": ["script"]},
+        },
+    },
+]
+
+
+def tool_call(name: str, args: dict, trust: str, allow_cmds: list[str]) -> str:
+    try:
+        if name == "read_file":
+            return pathlib.Path(args["path"]).read_text(encoding="utf-8", errors="replace")[:20000]
+        if name == "write_file":
+            p = pathlib.Path(args["path"])
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(args["content"], encoding="utf-8")
+            return f"wrote {args['path']} ({len(args['content'])} bytes)"
+        if name == "edit_file":
+            p = pathlib.Path(args["path"])
+            t = p.read_text(encoding="utf-8", errors="replace")
+            if args["old"] not in t:
+                return "ERROR: old string not found in file"
+            p.write_text(t.replace(args["old"], args["new"], 1), encoding="utf-8")
+            return f"edited {args['path']}"
+        if name == "list_dir":
+            root = args.get("path") or "."
+            return "\n".join(
+                str(p)
+                for p in sorted(pathlib.Path(root).rglob("*"))
+                if ".git/" not in str(p) and "node_modules" not in str(p) and "__pycache__" not in str(p)
+            )[:8000]
+        if name == "run_shell":
+            cmd = args["cmd"]
+            is_allowed = trust == "yolo" or any(cmd.strip().startswith(ac) for ac in allow_cmds)
+            if not is_allowed:
+                print(f"\033[33m  ⚡ Shell Command: $ {cmd}\033[0m")
+                ans = input("  Run? [y/N/a=always allow in session] ").strip().lower()
+                if ans == "a":
+                    allow_cmds.append(cmd.strip().split()[0])
+                elif ans != "y":
+                    return "user denied command execution"
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+            return f"exit={r.returncode}\n{r.stdout[-6000:]}{r.stderr[-3000:]}"
+        if name == "run_applescript":
+            script = args["script"]
+            if trust != "yolo":
+                print(f"\033[33m  🍎 AppleScript: {script}\033[0m")
+                if input("  Run AppleScript? [y/N] ").strip().lower() != "y":
+                    return "user denied applescript"
+            r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=30)
+            return f"exit={r.returncode}\n{r.stdout}{r.stderr}"
+    except Exception as e:
+        return f"TOOL_ERROR: {e}"
+    return "unknown tool"
+
+
+def context_files() -> str:
+    """Claude Code reads CLAUDE.md; OpenCode/Codex read AGENTS.md; we read BOTH + persistent SQLite memory."""
+    out = []
+    for f in ("AGENTS.md", "CLAUDE.md", ".apexagent"):
+        if os.path.isfile(f):
+            out.append(f"--- {f} ---\n" + pathlib.Path(f).read_text(encoding="utf-8", errors="replace")[:4000])
+
+    mem_db = pathlib.Path.home() / ".apex-workspace" / "memory.db"
+    if mem_db.exists():
+        try:
+            conn = sqlite3.connect(str(mem_db))
+            rows = conn.execute("SELECT content FROM agent_memories ORDER BY id DESC LIMIT 5").fetchall()
+            if rows:
+                out.append("--- PERSISTENT SESSION MEMORIES ---\n" + "\n".join(f"• {r[0]}" for r in rows))
+        except Exception:
+            pass
+    return "\n\n".join(out)
+
+
+def chat(messages: list[dict], requested_model: str, use_tools: bool = True) -> dict:
+    """Multi-model mid-task failover: if primary provider times out or hits 402/429, seamlessly swaps provider."""
+    chain = build_provider_chain(requested_model)
+    last_err = None
+    for label, url, api_key, model_id in chain:
+        payload = {"model": model_id, "messages": messages, "temperature": 0.2}
+        if use_tools:
+            payload["tools"] = TOOLS
+        body = json.dumps(payload).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "ApexAgent-ClaudeCodeKiller/3.0",
+        }
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        req = urllib.request.Request(url, data=body, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=90) as r:
+                data = json.loads(r.read().decode("utf-8"))
+                return data["choices"][0]["message"]
+        except Exception as e:
+            last_err = f"{label} ({model_id}): {e}"
+            continue
+    raise RuntimeError(f"All providers in failover chain failed. Last error: {last_err}")
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    trust = "ask"
+    plan = False
+    model = os.environ.get("VENICE_MODEL", "zai-org-glm-5-2")
+    max_steps = 40
+    allow_cmds: list[str] = ["git status", "git diff", "ls", "pwd", "pytest", "vitest"]
+
+    while args and args[0].startswith("--"):
+        flag = args.pop(0)
+        if flag in ("-h", "--help"):
+            print(__doc__)
+            sys.exit(0)
+        elif flag == "--plan":
+            plan = True
+        elif flag == "--trust" and args:
+            trust = args.pop(0)
+        elif flag == "--model" and args:
+            model = args.pop(0)
+        elif flag == "--max-steps" and args:
+            max_steps = int(args.pop(0))
+
+    task = " ".join(args).strip()
+    if not task:
+        print(__doc__)
+        sys.exit(1)
+
+    if os.path.isfile(".apexagent"):
+        try:
+            cfg = json.loads(pathlib.Path(".apexagent").read_text(encoding="utf-8"))
+            trust = cfg.get("trust", trust)
+            model = cfg.get("model", model)
+            max_steps = int(cfg.get("max_steps", max_steps))
+            allow_cmds.extend(cfg.get("allow_cmds", []))
+        except Exception:
+            pass
+
+    ctx = context_files()
+    sysm = (
+        "You are apex-agent, the sovereign agentic engineering loop of Apex Terminal OS. "
+        "You operate directly in the user's macOS shell. Use the provided tools (read_file, write_file, "
+        "edit_file, run_shell, list_dir, run_applescript) to complete the task. "
+        "Work step by step: inspect files, make surgical edits, then RUN tests/builds with run_shell "
+        "to verify before claiming completion. Be concise and exact."
+        + (f"\n\nProject & Memory Context:\n{ctx}" if ctx else "")
+    )
+    messages = [{"role": "system", "content": sysm}, {"role": "user", "content": task}]
+
+    git = subprocess.run("git rev-parse --abbrev-ref HEAD", shell=True, capture_output=True, text=True)
+    branch_info = f" · branch {git.stdout.strip()}" if git.returncode == 0 else ""
+    print(f"\033[1;35m⚔️  apex-agent · model={model} · trust={trust}{branch_info}\033[0m")
+
+    if plan:
+        plan_msgs = [
+            {"role": "system", "content": sysm},
+            {
+                "role": "user",
+                "content": (
+                    "PLAN ONLY — do not edit any files yet. Produce a concise numbered execution plan "
+                    f"listing exact files to touch and verification commands to run. Task: {task}"
+                ),
+            },
+        ]
+        plan_resp = chat(plan_msgs, model, use_tools=False)
+        plan_text = plan_resp.get("content", "")
+        print(f"\n\033[1;36m📋 EXECUTION PLAN:\033[0m\n{plan_text}\n")
+        if trust != "yolo":
+            if input("\033[1;33mExecute this plan now? [y/N] > \033[0m").strip().lower() != "y":
+                sys.exit(0)
+        messages.append({"role": "assistant", "content": f"Approved Execution Plan:\n{plan_text}"})
+        messages.append({"role": "user", "content": "Proceed to execute the approved plan using your tools and verify."})
+
+    for step in range(1, max_steps + 1):
+        msg = chat(messages, model, use_tools=True)
+        messages.append(msg)
+        tool_calls = msg.get("tool_calls") or []
+        if tool_calls:
+            for tc in tool_calls:
+                fn = tc["function"]["name"]
+                raw_args = tc["function"].get("arguments") or "{}"
+                a = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                arg_preview = ", ".join(f"{k}={str(v)[:50]}" for k, v in a.items())
+                print(f"\033[1;34m  [{step}/{max_steps}] 🔧 {fn}({arg_preview})\033[0m")
+                result = tool_call(fn, a, trust, allow_cmds)
+                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result[:8000]})
+        else:
+            print(f"\n\033[1;32m✓ {msg.get('content') or '(Done)'}\033[0m")
+            sys.exit(0)
+
+    print(f"\033[1;31m✗ Step budget exhausted ({max_steps}) — refine the task or pass --max-steps 80\033[0m")
+
+
+if __name__ == "__main__":
+    main()

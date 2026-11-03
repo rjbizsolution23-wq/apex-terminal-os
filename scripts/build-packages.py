@@ -57,10 +57,12 @@ def build_all():
 
     shutil.copy2(REPO_ROOT / "bin/apex", dev_dir / "bin/apex")
     shutil.copy2(REPO_ROOT / "bin/venice", dev_dir / "bin/venice")
+    shutil.copy2(REPO_ROOT / "bin/apex-agent", dev_dir / "bin/apex-agent")
     shutil.copy2(REPO_ROOT / "bin/apex-rag", dev_dir / "bin/apex-rag")
     for sheet in sorted((REPO_ROOT / "cheatsheets").glob("0[1-8]-*.txt")):
         shutil.copy2(sheet, dev_dir / "cheatsheets" / sheet.name)
     shutil.copy2(REPO_ROOT / "config/.zshrc_apex", dev_dir / "config/.zshrc_apex")
+    shutil.copy2(REPO_ROOT / "config/apex-agent.zsh", dev_dir / "config/apex-agent.zsh")
     shutil.copy2(REPO_ROOT / "config/starship.toml", dev_dir / "config/starship.toml")
     shutil.copy2(REPO_ROOT / "config/apex-seatbelt.sb", dev_dir / "config/apex-seatbelt.sb")
     shutil.copy2(REPO_ROOT / "config/apex-layout.kdl", dev_dir / "config/apex-layout.kdl")
@@ -72,7 +74,8 @@ def build_all():
 **Issued by:** RJ Business Solutions (Rick Jefferson, CEO)  
 **Permitted Activations:** 1 Personal macOS Workstation  
 **Included Modules:**
-- 12-Ability Startup Command Center (`m` / `menu`)
+- 17-Ability Startup Command Center (`m` / `menu`)
+- `apex-agent` Claude-Code-Style Agentic Coding Loop (`ax`, `axp`, `axy`)
 - 500+ Command Fuzzy Arsenal (`apex` + Cheatsheets 01–08)
 - Hermetic Sandbox Runner (`sandbox`) & `runlast`
 - Live Interactive HTML5/Tailwind Canvas Server (`canvas` on port 7799)
@@ -96,11 +99,13 @@ def build_all():
 **Issued by:** RJ Business Solutions (Rick Jefferson, CEO)  
 **Permitted Activations:** Up to 5 macOS Workstations (Founder / Agency Pro)  
 **Included Modules:**
-- Everything in Developer Edition
+- Everything in Developer Edition (`apex-agent`, 17-Ability Command Center, Sandbox, Canvas)
 - Complete 2-Stage Semantic Neural Auto-Router across all 9 Venice Uncensored, Obliterated (`abliteration-abliterated-model-large-v2`), Frontier (`zai-org-glm-5-2`), Heretic, Roleplay, Gemma 4, OSS 120B, E2EE & Lustify v8 Image Studio models
-- Cheatsheet `09-venice-uncensored.txt`
+- Cheatsheet `09-venice-uncensored.txt` & `10-open-source-ai-agents.txt`
+- Model Context Protocol (MCP) Server (`apex-mcp`)
+- Universal LiteLLM Multi-Provider Gateway & RAG Corpus (`apex-rag`)
 - Multi-File Full-Stack Project Forge (`forge`)
-- Zero-Downtime Sovereign Failover Engine (Venice + GLM + OpenRouter automatic backup routing)
+- Zero-Downtime Sovereign Failover Engine (Venice + GLM + OpenRouter + Ollama $0 automatic backup routing)
 - Adversarial Git Security Auditor (`uaudit` & `aicommit`)
 
 © 2026 RJ Business Solutions · 1342 NM 333, Tijeras, New Mexico 87059

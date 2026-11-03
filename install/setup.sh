@@ -57,7 +57,7 @@ cp -r "$REPO_DIR/config/litellm_config.yaml" "$HOME/.config/arsenal/litellm_conf
 cp "$REPO_DIR/bin/apex" "$HOME/.local/bin/apex"
 cp "$REPO_DIR/bin/venice" "$HOME/.local/bin/venice"
 chmod +x "$HOME/.local/bin/apex" "$HOME/.local/bin/venice"
-for extra_bin in apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
+for extra_bin in apex-agent apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
     if [ -f "$REPO_DIR/bin/$extra_bin" ]; then
         cp "$REPO_DIR/bin/$extra_bin" "$HOME/.local/bin/$extra_bin"
         chmod +x "$HOME/.local/bin/$extra_bin"
