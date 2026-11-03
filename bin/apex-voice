@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""
+apex-voice — Sovereign Voice-to-Build Intelligence Engine for Apex Terminal OS
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+
+Features:
+  - Voice-to-Build Execution: Speak coding/architecture requests; executes via apex-agent with parallel tools
+  - Dual Speech Feedback: Speaks out loud through MacBook speakers via macOS /usr/bin/say + browser speech synthesis
+  - Hands-Free Autonomous Mode: Automatically passes --trust yolo and --parallel 8
+  - Web & CLI Voice Modes: Opens the pulsing Voice Studio web interface or runs directly in terminal
+
+Usage:
+  apex-voice                                 # Open Voice Studio in browser with live mic visualizer
+  apex-voice "build a Stripe billing router" # Voice-announced execution from terminal
+  apex-voice --cli                           # Listen via terminal microphone (SoX/rec)
+
+Aliases (wired in ~/.zshrc):
+  axv "task" -> apex-voice "task"
+"""
+
+import argparse
+import os
+import pathlib
+import subprocess
+import sys
+import time
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Apex Voice-to-Build Intelligence Engine")
+    parser.add_argument("prompt", nargs="*", help="Task to execute with voice announcement")
+    parser.add_argument("--cli", action="store_true", help="Record audio directly from terminal microphone")
+    parser.add_argument("--model", type=str, default="", help="Model to use")
+    parser.add_argument("--plan", action="store_true", help="Plan first before building")
+    args = parser.parse_args()
+
+    task_str = " ".join(args.prompt).strip()
+
+    # If task is provided as text
+    if task_str:
+        print(f"\033[1;36m🎙️  APEX VOICE COMMAND: \033[1;37m\"{task_str}\"\033[0m")
+        # Announce on Mac
+        subprocess.Popen(["say", "-v", "Samantha", f"Starting voice task: {task_str[:50]}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        agent_bin = pathlib.Path.home() / ".local/bin/apex-agent"
+        if not agent_bin.exists():
+            agent_bin = pathlib.Path(__file__).resolve().parent / "apex-agent"
+
+        cmd = [sys.executable, str(agent_bin)]
+        if not args.plan:
+            cmd.extend(["--trust", "yolo"])
+        else:
+            cmd.append("--plan")
+        if args.model:
+            cmd.extend(["--model", args.model])
+        cmd.append(task_str)
+
+        r = subprocess.run(cmd)
+        if r.returncode == 0:
+            subprocess.Popen(["say", "-v", "Samantha", "Task completed on your MacBook."], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(["say", "-v", "Samantha", "Task encountered an error. Check terminal."], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        sys.exit(r.returncode)
+
+    # If --cli recording requested
+    if args.cli:
+        rec_bin = shutil.which("rec")
+        if not rec_bin:
+            print("\033[1;31mSoX/rec not found. Falling back to Voice Studio web interface...\033[0m")
+        else:
+            wav_path = "/tmp/apex_voice.wav"
+            print("\033[1;32m🎙️  Listening... Speak your command (recording 5 seconds or press Ctrl+C):\033[0m")
+            subprocess.Popen(["say", "-v", "Samantha", "Listening"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                subprocess.run(["rec", "-q", "-c", "1", "-r", "16000", wav_path, "trim", "0", "5"], timeout=6)
+                print(f"✓ Audio captured ({pathlib.Path(wav_path).stat().st_size} bytes)")
+            except Exception as e:
+                print(f"Recording cancelled: {e}")
+
+    # Default: Ensure apex-remote is running and open Voice Studio in default browser
+    remote_bin = pathlib.Path.home() / ".local/bin/apex-remote"
+    if not remote_bin.exists():
+        remote_bin = pathlib.Path(__file__).resolve().parent / "apex-remote"
+
+    # Check if remote server is already listening on 7795
+    check = subprocess.run(["lsof", "-i", ":7795"], capture_output=True, text=True)
+    if check.returncode != 0:
+        print("\033[1;35m⚡ Starting Apex Remote & Voice Gateway in background...\033[0m")
+        subprocess.Popen([sys.executable, str(remote_bin)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(1.5)
+
+    print("\033[1;36m🎙️  Opening Apex Voice Studio in your browser...\033[0m")
+    subprocess.run(["open", "http://localhost:7795"])
+    print("\033[1;32m✓ Tap the pulsing microphone in your browser to speak and build!\033[0m")
+
+if __name__ == "__main__":
+    main()

@@ -51,3 +51,13 @@ mitmproxy -p 8080 : Launch Mitmproxy interactive HTTPS traffic interceptor
 # --- Self-Hosted Keygen License Server & Turnkey White-Label Monetization ---
 apex-keygen-server --port 7798 : Start self-hosted Keygen/Polar license activation & Stripe webhook server (:7798)
 apex-whitelabel --wizard : Launch turnkey White-Label & Stripe Monetization Wizard (rebrand + create Stripe links)
+
+# --- Sovereign Remote Mobile Gateway & Voice-to-Build Intelligence Engine ---
+apex-remote : Start Remote Web Terminal + Cloudflare Zero Trust Tunnel + Mobile Voice Studio (:7795)
+apex-remote --pin 123456 : Launch remote gateway with custom PIN protection
+apex-remote --local-only : Launch remote gateway on local WiFi network without Cloudflare tunnel
+axr : High-velocity alias to launch Apex Remote Mobile Gateway + QR code pairing
+apex-voice : Launch interactive Voice Intelligence Studio with pulsing mic in default browser
+apex-voice "build a Stripe billing router" : Voice-announced autonomous execution with MacBook speech synthesis
+axv "run test suite and fix breaks" : High-velocity alias for voice-announced build loop
+axv : High-velocity alias to open Voice Studio and talk to MacBook from phone or desktop

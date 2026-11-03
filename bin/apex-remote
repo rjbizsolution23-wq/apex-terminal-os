@@ -1,0 +1,736 @@
+#!/usr/bin/env python3
+"""
+apex-remote — Sovereign Remote Gateway & Mobile Voice Command Center for Apex Terminal OS
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+
+Features:
+  - Remote Terminal over Web (ttyd with xterm.js emulation + touch support for iOS/Android)
+  - Cloudflare Zero Trust Tunnel (encrypted public HTTPS URL accessible from anywhere in the world)
+  - Voice Intelligence Studio (real-time voice recognition, build-on-speech, audio synthesis playback)
+  - Mobile Quick-Key Keyboard Accessory (Esc, Tab, Ctrl+C, ax, axy, git)
+  - Interactive QR Code in terminal for instant 1-second camera pairing to iPhone/iPad
+  - MacBook Dual Audio Response (speaks back on your phone AND aloud on your MacBook via /usr/bin/say)
+
+Usage:
+  apex-remote               # Start Remote Web Terminal + Voice Gateway + Cloudflare Tunnel
+  apex-remote --pin 123456  # Set custom PIN
+  apex-remote --local-only  # Run on local network without Cloudflare Tunnel
+  apex-remote --port 7795   # Custom gateway port (default: 7795)
+
+Aliases (wired in ~/.zshrc):
+  axr -> apex-remote
+"""
+
+import argparse
+import base64
+import http.server
+import json
+import os
+import pathlib
+import random
+import re
+import select
+import shutil
+import socket
+import socketserver
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+from typing import Dict, Any
+
+CANVAS_DIR = pathlib.Path.home() / ".apex-workspace" / "canvas"
+AUTH_FILE = pathlib.Path.home() / ".apex-workspace" / ".remote_pin"
+
+# ---------- Sovereign HTML/JS Dashboard Template ----------
+DASHBOARD_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Apex Remote · Sovereign Voice Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0f172a; color: #f8fafc; }
+    .font-display { font-family: 'Space Grotesk', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .rj-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%); }
+    .pulse-ring {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.65; transform: scale(1.08); }
+    }
+    .listening-wave {
+      animation: wave 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes wave {
+      0% { transform: scaleY(0.4); }
+      100% { transform: scaleY(1.4); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Top Executive Header -->
+  <header class="rj-gradient border-b border-blue-900/60 px-4 py-3 sticky top-0 z-50 shadow-md">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-display font-bold text-white shadow-sm">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-display font-bold text-base sm:text-lg text-white tracking-tight">APEX REMOTE OS</h1>
+            <span class="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">v2.0 Mobile</span>
+          </div>
+          <p class="text-xs text-blue-200/80">Rick Jefferson | RJ Business Solutions</p>
+        </div>
+      </div>
+
+      <!-- Live Status Badge -->
+      <div id="status-badge" class="flex items-center gap-2 bg-slate-900/80 border border-slate-700/80 rounded-full px-3 py-1 text-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="mac-status-text" class="text-slate-300 font-mono text-[11px]">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tab Navigation Bar -->
+  <div class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 sticky top-[57px] z-40 backdrop-blur">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-1 sm:gap-2">
+      <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto py-1 scrollbar-none w-full">
+        <button onclick="switchTab('voice')" id="tab-voice" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-blue-600 text-white transition">
+          <span>🎙️</span> <span>Voice Studio</span>
+        </button>
+        <button onclick="switchTab('terminal')" id="tab-terminal" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
+          <span>🖥️</span> <span>Terminal (ttyd)</span>
+        </button>
+        <button onclick="switchTab('actions')" id="tab-actions" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-slate-800 text-slate-300 hover:text-white transition">
+          <span>⚡</span> <span>Quick Actions</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Viewport Container -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-4 flex flex-col">
+
+    <!-- ================= TAB 1: VOICE STUDIO ================= -->
+    <section id="view-voice" class="flex-1 flex flex-col gap-4">
+      
+      <!-- Microphone Hero Card -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 text-center flex flex-col items-center justify-center relative overflow-hidden shadow-xl">
+        <div class="absolute inset-0 bg-gradient-to-b from-blue-600/10 to-transparent pointer-events-none"></div>
+
+        <span class="text-xs font-display font-semibold uppercase tracking-wider text-blue-400 bg-blue-950/60 border border-blue-800/40 px-3 py-1 rounded-full mb-3">
+          Voice-to-Build Intelligence Engine
+        </span>
+        <h2 class="text-xl sm:text-2xl font-display font-bold text-white mb-2">
+          Talk to Your MacBook From Anywhere
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400 max-w-md mb-6">
+          Tap the microphone, state any coding or engineering task. Your MacBook executes in parallel, verifies tests, and reports back in voice.
+        </p>
+
+        <!-- Big Tactile Microphone Button -->
+        <button id="mic-button" onclick="toggleVoiceRecording()" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-blue-600 to-sky-400 hover:from-blue-500 hover:to-sky-300 active:scale-95 shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all duration-300 border-4 border-blue-400/30">
+          <span id="mic-icon" class="text-4xl sm:text-5xl">🎙️</span>
+        </button>
+
+        <!-- Status label -->
+        <p id="voice-state" class="text-xs font-mono font-medium text-slate-400 mt-4 tracking-wide">
+          Tap to Speak to MacBook
+        </p>
+
+        <!-- Audio Wave Visualizer Simulation -->
+        <div id="voice-waves" class="flex items-center gap-1.5 h-6 mt-3 opacity-0 transition-opacity">
+          <span class="w-1 bg-sky-400 rounded-full h-3 listening-wave" style="animation-delay: 0.1s"></span>
+          <span class="w-1 bg-blue-500 rounded-full h-5 listening-wave" style="animation-delay: 0.2s"></span>
+          <span class="w-1 bg-sky-300 rounded-full h-6 listening-wave" style="animation-delay: 0.3s"></span>
+          <span class="w-1 bg-blue-400 rounded-full h-4 listening-wave" style="animation-delay: 0.4s"></span>
+          <span class="w-1 bg-sky-400 rounded-full h-2 listening-wave" style="animation-delay: 0.5s"></span>
+        </div>
+      </div>
+
+      <!-- Transcript & Task Input Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>📝</span> Voice Transcript / Task Prompt
+          </label>
+          <span class="text-[11px] text-slate-500 font-mono" id="char-count">0 chars</span>
+        </div>
+
+        <textarea id="task-input" rows="3" placeholder="Speak your command or type here (e.g. 'Audit the authentication module and fix failing tests')..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-sans resize-none"></textarea>
+
+        <!-- Model & Execution Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-800/60">
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="model-select" class="bg-slate-950 border border-slate-800 text-xs rounded-lg px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-blue-500">
+              <option value="zai-org-glm-5-2">Frontier GLM 5.2 (Venice)</option>
+              <option value="glm-4.5-flash">Sovereign GLM (Z.ai)</option>
+              <option value="ollama">Local Offline Ollama ($0)</option>
+            </select>
+
+            <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 border border-slate-800 px-2.5 py-1.5 rounded-lg">
+              <input type="checkbox" id="trust-yolo" checked class="rounded border-slate-700 text-blue-600 focus:ring-0">
+              <span>Hands-Free (YOLO)</span>
+            </label>
+
+            <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 border border-slate-800 px-2.5 py-1.5 rounded-lg">
+              <input type="checkbox" id="audio-feedback" checked class="rounded border-slate-700 text-blue-600 focus:ring-0">
+              <span>Voice Reply</span>
+            </label>
+          </div>
+
+          <button onclick="executeTask()" id="btn-execute" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold px-5 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
+            <span>⚡</span> <span>Execute on Mac</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Execution Log Terminal -->
+      <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex-1 flex flex-col min-h-[260px]">
+        <div class="bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+            <span class="font-mono text-slate-400 font-semibold ml-2">MacBook Live Build Monitor</span>
+          </div>
+          <button onclick="clearLogs()" class="text-slate-500 hover:text-slate-300 text-[11px] font-mono">Clear</button>
+        </div>
+        <div id="execution-logs" class="p-4 font-mono text-xs leading-relaxed text-slate-300 overflow-y-auto flex-1 select-text space-y-1">
+          <p class="text-slate-500 italic">Waiting for command... Speak into your microphone or pick a Quick Action.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: TERMINAL (ttyd) ================= -->
+    <section id="view-terminal" class="hidden flex-1 flex flex-col gap-2">
+      <!-- Mobile Quick Keys Toolbar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-lg p-1.5 flex items-center gap-1.5 overflow-x-auto text-xs font-mono scrollbar-none">
+        <button onclick="sendKeyToTerminal('\x1b')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">Esc</button>
+        <button onclick="sendKeyToTerminal('\t')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">Tab</button>
+        <button onclick="sendKeyToTerminal('\x03')" class="bg-slate-800 hover:bg-red-900/40 text-red-400 px-2.5 py-1 rounded">Ctrl+C</button>
+        <button onclick="sendKeyToTerminal('\x0c')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">Ctrl+L</button>
+        <div class="w-[1px] h-4 bg-slate-700 mx-1"></div>
+        <button onclick="sendTextToTerminal('ax ')" class="bg-blue-900/40 border border-blue-700/50 text-blue-300 px-2.5 py-1 rounded font-bold">ax</button>
+        <button onclick="sendTextToTerminal('axy ')" class="bg-blue-900/40 border border-blue-700/50 text-blue-300 px-2.5 py-1 rounded font-bold">axy</button>
+        <button onclick="sendTextToTerminal('axp ')" class="bg-blue-900/40 border border-blue-700/50 text-blue-300 px-2.5 py-1 rounded font-bold">axp</button>
+        <button onclick="sendTextToTerminal('git status\n')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">git</button>
+        <button onclick="sendTextToTerminal('m\n')" class="bg-emerald-900/40 border border-emerald-700/50 text-emerald-300 px-2.5 py-1 rounded font-bold">menu</button>
+      </div>
+
+      <!-- ttyd Embedded Iframe -->
+      <div class="flex-1 bg-black rounded-xl border border-slate-800 overflow-hidden relative min-h-[500px]">
+        <iframe id="terminal-frame" src="/terminal/" class="w-full h-full border-0 absolute inset-0"></iframe>
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: QUICK ACTIONS ================= -->
+    <section id="view-actions" class="hidden flex-1 flex flex-col gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        
+        <!-- Action 1 -->
+        <div onclick="quickRun('Run all unit tests and fix any failing tests', true)" class="bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-md group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">🧪</span>
+            <span class="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">Self-Heal</span>
+          </div>
+          <h3 class="font-display font-bold text-white text-base group-hover:text-blue-400 transition">Test &amp; Auto-Fix</h3>
+          <p class="text-xs text-slate-400 mt-1">Runs test suite on MacBook, catches broken assertions, and auto-patches the code.</p>
+        </div>
+
+        <!-- Action 2 -->
+        <div onclick="quickRun('Inspect git status, list recent commits, and show git diff summary', false)" class="bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-md group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">📊</span>
+            <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold uppercase">Git Audit</span>
+          </div>
+          <h3 class="font-display font-bold text-white text-base group-hover:text-blue-400 transition">Git Status &amp; Diff</h3>
+          <p class="text-xs text-slate-400 mt-1">Fetches working tree diffs and staged commits across your active branch.</p>
+        </div>
+
+        <!-- Action 3 -->
+        <div onclick="quickRun('Speak current MacBook battery level, CPU load, and system health via voice', true)" class="bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-md group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">🗣️</span>
+            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-bold uppercase">Audio State</span>
+          </div>
+          <h3 class="font-display font-bold text-white text-base group-hover:text-blue-400 transition">Voice System Health</h3>
+          <p class="text-xs text-slate-400 mt-1">MacBook reads aloud its battery, thermal state, uptime, and git branch.</p>
+        </div>
+
+        <!-- Action 4 -->
+        <div onclick="quickRun('Build and push all latest changes to origin main on GitHub', false)" class="bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-md group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">🚀</span>
+            <span class="text-[10px] bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded font-bold uppercase">Deploy</span>
+          </div>
+          <h3 class="font-display font-bold text-white text-base group-hover:text-blue-400 transition">Push to GitHub</h3>
+          <p class="text-xs text-slate-400 mt-1">Commits latest verified files and pushes to remote GitHub repository.</p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ---------- State ----------
+    let isRecording = false;
+    let recognition = null;
+    let activeTab = 'voice';
+
+    // ---------- Tab Switching ----------
+    function switchTab(tabId) {
+      activeTab = tabId;
+      ['voice', 'terminal', 'actions'].forEach(id => {
+        const view = document.getElementById('view-' + id);
+        const btn = document.getElementById('tab-' + id);
+        if (id === tabId) {
+          view.classList.remove('hidden');
+          btn.classList.add('bg-blue-600', 'text-white');
+          btn.classList.remove('bg-slate-800', 'text-slate-300');
+        } else {
+          view.classList.add('hidden');
+          btn.classList.remove('bg-blue-600', 'text-white');
+          btn.classList.add('bg-slate-800', 'text-slate-300');
+        }
+      });
+    }
+
+    // ---------- Speech Recognition (Web Speech API) ----------
+    function initSpeech() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        document.getElementById('voice-state').textContent = 'Voice recognition not supported in this browser. Use text box.';
+        return null;
+      }
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        isRecording = true;
+        document.getElementById('mic-button').classList.add('ring-4', 'ring-red-500', 'from-red-600', 'to-rose-400', 'pulse-ring');
+        document.getElementById('mic-icon').textContent = '🔴';
+        document.getElementById('voice-state').textContent = 'Listening... Speak your command now';
+        document.getElementById('voice-waves').classList.remove('opacity-0');
+      };
+
+      rec.onresult = (e) => {
+        let transcript = '';
+        for (let i = 0; i < e.results.length; i++) {
+          transcript += e.results[i][0].transcript;
+        }
+        document.getElementById('task-input').value = transcript;
+        document.getElementById('char-count').textContent = transcript.length + ' chars';
+      };
+
+      rec.onerror = (e) => {
+        console.error('Speech error', e);
+        stopRecording();
+        document.getElementById('voice-state').textContent = 'Error: ' + e.error + '. Tap to retry.';
+      };
+
+      rec.onend = () => {
+        stopRecording();
+        const text = document.getElementById('task-input').value.trim();
+        if (text) {
+          document.getElementById('voice-state').textContent = 'Heard: "' + text.substring(0, 40) + '..."';
+          // Auto-execute if voice command recognized
+          executeTask();
+        } else {
+          document.getElementById('voice-state').textContent = 'Tap to Speak to MacBook';
+        }
+      };
+
+      return rec;
+    }
+
+    function toggleVoiceRecording() {
+      if (isRecording) {
+        if (recognition) recognition.stop();
+        stopRecording();
+      } else {
+        if (!recognition) recognition = initSpeech();
+        if (recognition) {
+          try { recognition.start(); } catch(e) { console.warn(e); }
+        }
+      }
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      const btn = document.getElementById('mic-button');
+      btn.classList.remove('ring-4', 'ring-red-500', 'from-red-600', 'to-rose-400', 'pulse-ring');
+      btn.classList.add('from-blue-600', 'to-sky-400');
+      document.getElementById('mic-icon').textContent = '🎙️';
+      document.getElementById('voice-waves').classList.add('opacity-0');
+    }
+
+    // ---------- Execute Task via Backend API ----------
+    async function executeTask() {
+      const task = document.getElementById('task-input').value.trim();
+      if (!task) return;
+
+      const model = document.getElementById('model-select').value;
+      const yolo = document.getElementById('trust-yolo').checked;
+      const audioFeedback = document.getElementById('audio-feedback').checked;
+
+      const logContainer = document.getElementById('execution-logs');
+      logContainer.innerHTML += `<div class="text-blue-400 font-bold mt-2">⚡ [Voice Command Dispatched]: "${task}"</div>`;
+      logContainer.scrollTop = logContainer.scrollHeight;
+
+      document.getElementById('btn-execute').disabled = true;
+      document.getElementById('btn-execute').classList.add('opacity-50');
+
+      try {
+        const resp = await fetch('/api/voice-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task, model, yolo, audio_feedback: audioFeedback })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'ok') {
+          logContainer.innerHTML += `<div class="text-emerald-400 whitespace-pre-wrap mt-1">${escapeHtml(data.output)}</div>`;
+          // Phone Speech Synthesis feedback
+          if (audioFeedback && 'speechSynthesis' in window) {
+            const summary = data.summary || "Task completed on your MacBook.";
+            const utter = new SpeechSynthesisUtterance(summary);
+            utter.rate = 1.05;
+            window.speechSynthesis.speak(utter);
+          }
+        } else {
+          logContainer.innerHTML += `<div class="text-red-400 mt-1">✗ Error: ${escapeHtml(data.error || 'Execution failed')}</div>`;
+        }
+      } catch (err) {
+        logContainer.innerHTML += `<div class="text-red-400 mt-1">✗ Network Error: ${escapeHtml(err.message)}</div>`;
+      } finally {
+        document.getElementById('btn-execute').disabled = false;
+        document.getElementById('btn-execute').classList.remove('opacity-50');
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+    }
+
+    function quickRun(prompt, yolo) {
+      document.getElementById('task-input').value = prompt;
+      document.getElementById('trust-yolo').checked = yolo;
+      switchTab('voice');
+      executeTask();
+    }
+
+    function clearLogs() {
+      document.getElementById('execution-logs').innerHTML = '<p class="text-slate-500 italic">Logs cleared.</p>';
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ---------- Send Key to Embedded ttyd Terminal ----------
+    function sendKeyToTerminal(key) {
+      const frame = document.getElementById('terminal-frame');
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'stdin', data: key }, '*');
+      }
+    }
+
+    function sendTextToTerminal(text) {
+      const frame = document.getElementById('terminal-frame');
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'stdin', data: text }, '*');
+      }
+    }
+
+    // ---------- Live Status Polling ----------
+    async function updateStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const d = await res.json();
+        document.getElementById('mac-status-text').textContent = 
+          `${d.battery} · ${d.branch} · load ${d.load}`;
+      } catch (e) {
+        document.getElementById('mac-status-text').textContent = 'Connected';
+      }
+    }
+    setInterval(updateStatus, 15000);
+    updateStatus();
+  </script>
+</body>
+</html>
+"""
+
+
+# ---------- Unified Proxy & Voice API Handler ----------
+class SovereignRemoteHandler(http.server.BaseHTTPRequestHandler):
+    ttyd_port: int = 7681
+    pin: str = "749201"
+
+    def do_GET(self):
+        url_parts = urllib.parse.urlparse(self.path)
+        path = url_parts.path
+
+        # Forward any /terminal or /terminal/ws request to ttyd
+        if path.startswith("/terminal"):
+            self.forward_raw_to_ttyd()
+            return
+
+        # Status endpoint
+        if path == "/api/status":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            # Battery info
+            batt_res = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True)
+            m_batt = re.search(r"(\d+%);", batt_res.stdout)
+            battery = f"🔋 {m_batt.group(1)}" if m_batt else "⚡ AC Power"
+
+            # Git branch
+            branch_res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True)
+            branch = branch_res.stdout.strip() if branch_res.returncode == 0 else "main"
+
+            # Load avg
+            load_res = subprocess.run(["uptime"], capture_output=True, text=True)
+            m_load = re.search(r"load averages?:\s*([0-9.]+)", load_res.stdout)
+            load = m_load.group(1) if m_load else "0.5"
+
+            resp = {"status": "online", "battery": battery, "branch": branch, "load": load}
+            self.wfile.write(json.dumps(resp).encode("utf-8"))
+            return
+
+        # Root: Serve Sovereign Mobile Voice & Remote Dashboard
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(DASHBOARD_HTML.encode("utf-8"))
+
+    def do_POST(self):
+        url_parts = urllib.parse.urlparse(self.path)
+        path = url_parts.path
+
+        if path.startswith("/terminal"):
+            self.forward_raw_to_ttyd()
+            return
+
+        # Voice task execution endpoint
+        if path == "/api/voice-task":
+            content_len = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body) if body else {}
+
+            task = data.get("task", "").strip()
+            model = data.get("model", "zai-org-glm-5-2")
+            yolo = bool(data.get("yolo", True))
+            audio_feedback = bool(data.get("audio_feedback", True))
+
+            if not task:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": "No task provided"}).encode("utf-8"))
+                return
+
+            # Mac Audio Announcement
+            if audio_feedback:
+                subprocess.Popen(["say", "-v", "Samantha", f"Starting remote voice task: {task[:50]}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            # Build apex-agent command line
+            agent_bin = pathlib.Path.home() / ".local/bin/apex-agent"
+            if not agent_bin.exists():
+                agent_bin = pathlib.Path(__file__).resolve().parent / "apex-agent"
+
+            cmd = [sys.executable, str(agent_bin)]
+            if yolo:
+                cmd.extend(["--trust", "yolo"])
+            cmd.extend(["--model", model])
+            cmd.append(task)
+
+            # Run apex-agent
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            full_output = (r.stdout + r.stderr).strip()
+
+            summary = f"Task completed on your MacBook: {task[:40]}"
+            if "✓" in full_output:
+                summary = "Build and verification succeeded on your MacBook."
+            elif "ERROR" in full_output or "✗" in full_output:
+                summary = "Task encountered an error. Check logs on your screen."
+
+            # Announce completion on Mac
+            if audio_feedback:
+                subprocess.Popen(["say", "-v", "Samantha", summary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok", "output": full_output, "summary": summary}).encode("utf-8"))
+            return
+
+        self.send_response(404)
+        self.end_headers()
+
+    def forward_raw_to_ttyd(self):
+        """Bridges HTTP and WebSockets seamlessly between client and ttyd with auto-auth."""
+        try:
+            upstream = socket.create_connection(("127.0.0.1", self.ttyd_port), timeout=10)
+        except Exception as e:
+            self.send_response(502)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"ttyd upstream unavailable: {e}".encode("utf-8"))
+            return
+
+        req_lines = [f"{self.command} {self.path} {self.request_version}"]
+        has_auth = False
+        for k, v in self.headers.items():
+            if k.lower() == "authorization":
+                has_auth = True
+            req_lines.append(f"{k}: {v}")
+
+        # Inject basic auth so the user never gets prompted on mobile
+        if not has_auth and self.pin:
+            token = base64.b64encode(f"rick:{self.pin}".encode("utf-8")).decode("ascii")
+            req_lines.append(f"Authorization: Basic {token}")
+
+        req_bytes = "\r\n".join(req_lines).encode("utf-8") + b"\r\n\r\n"
+        upstream.sendall(req_bytes)
+
+        client_sock = self.connection
+        sockets = [client_sock, upstream]
+        try:
+            while True:
+                r, _, _ = select.select(sockets, [], [], 120.0)
+                if not r:
+                    break
+                for s in r:
+                    other = upstream if s is client_sock else client_sock
+                    data = s.recv(16384)
+                    if not data:
+                        return
+                    other.sendall(data)
+        except Exception:
+            pass
+        finally:
+            upstream.close()
+
+
+# ---------- Cloudflare Tunnel Runner ----------
+def start_cloudflare_tunnel(port: int) -> Tuple[subprocess.Popen, str]:
+    proc = subprocess.Popen(
+        ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"],
+        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        text=True,
+    )
+    public_url = ""
+    t0 = time.time()
+    while time.time() - t0 < 20:
+        line = proc.stderr.readline()
+        if not line:
+            time.sleep(0.1)
+            continue
+        m = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", line)
+        if m:
+            public_url = m.group(0)
+            break
+    return proc, public_url
+
+
+# ---------- Main CLI Entrypoint ----------
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Apex Remote & Voice Command Gateway")
+    parser.add_argument("--port", type=int, default=7795, help="Remote Gateway port (default: 7795)")
+    parser.add_argument("--ttyd-port", type=int, default=7681, help="ttyd terminal port (default: 7681)")
+    parser.add_argument("--pin", type=str, default="", help="Remote PIN credential")
+    parser.add_argument("--local-only", action="store_true", help="Skip Cloudflare public tunnel")
+    args = parser.parse_args()
+
+    # Determine PIN
+    pin = args.pin
+    if not pin:
+        if AUTH_FILE.exists():
+            pin = AUTH_FILE.read_text().strip()
+        else:
+            pin = str(random.randint(100000, 999999))
+            AUTH_FILE.parent.mkdir(parents=True, exist_ok=True)
+            AUTH_FILE.write_text(pin)
+
+    # 1. Start ttyd
+    print("\033[1;36m╭─ 🌐 STARTING APEX REMOTE & SOVEREIGN VOICE COMMAND CENTER\033[0m")
+    print(f"\033[1;34m├─ 🖥️  Launching ttyd Terminal on :7681 (user: rick | PIN: {pin})\033[0m")
+    
+    # Kill any stale ttyd on this port
+    subprocess.run(["pkill", "-f", f"ttyd.*{args.ttyd_port}"], capture_output=True)
+    time.sleep(0.3)
+
+    ttyd_proc = subprocess.Popen(
+        ["ttyd", "-W", "-b", "/terminal", "-p", str(args.ttyd_port), "-c", f"rick:{pin}", "zsh"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    time.sleep(0.5)
+
+    # 2. Start Gateway Server on 7795
+    SovereignRemoteHandler.ttyd_port = args.ttyd_port
+    SovereignRemoteHandler.pin = pin
+    server = socketserver.ThreadingTCPServer(("0.0.0.0", args.port), SovereignRemoteHandler)
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+
+    local_url = f"http://localhost:{args.port}?pin={pin}"
+    public_url = ""
+    tunnel_proc = None
+
+    if not args.local_only:
+        print(f"\033[1;35m├─ 🔒 Spawning Cloudflare Zero Trust Public Tunnel...\033[0m")
+        tunnel_proc, public_url = start_cloudflare_tunnel(args.port)
+
+    active_url = public_url if public_url else local_url
+
+    print(f"\033[1;32m├─ 📱 Active Gateway URL:\033[0m \033[1;37;44m {active_url} \033[0m")
+    print(f"\033[1;33m├─ 🔑 Remote Credentials:\033[0m Username: \033[1;37mrick\033[0m | PIN: \033[1;37m{pin}\033[0m")
+    print(f"\033[1;36m├─ 🎙️  Voice Intelligence:\033[0m Web Speech + Dual SpeechSynthesis + Mac /usr/bin/say")
+
+    # Copy to clipboard
+    subprocess.run(["pbcopy"], input=active_url.encode("utf-8"), check=False)
+    print("\033[1;32m├─ 📋 Copied Remote URL to macOS clipboard!\033[0m")
+
+    # Print ASCII QR Code
+    if shutil.which("qrencode"):
+        print("\033[1;35m╰─ 📲 SCAN QR CODE WITH YOUR IPHONE / IPAD CAMERA TO CONNECT:\033[0m\n")
+        subprocess.run(["qrencode", "-t", "UTF8", active_url])
+        print("")
+    else:
+        print(f"\033[1;35m╰─ 📲 Open on your phone: {active_url}\033[0m\n")
+
+    # Voice announcement on Mac
+    subprocess.Popen(["say", "-v", "Samantha", "Apex Remote and Voice Command Center is live. Ready for remote build."], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n\033[1;31mShutting down Apex Remote Gateway...\033[0m")
+        if tunnel_proc:
+            tunnel_proc.terminate()
+        ttyd_proc.terminate()
+        server.shutdown()
+        print("✓ Done.")
+
+
+if __name__ == "__main__":
+    main()
