@@ -10,6 +10,15 @@
 | Key / Alias | Target Command | Description |
 | :--- | :--- | :--- |
 | `m` or `menu` | `apex-menu` | Launch the 12-Ability Interactive Numbered Startup Menu |
+| `ax <task>` | `noglob apex-agent` | Claude-Code-Killer agentic coding loop (15 tools, parallel execution) |
+| `axp <task>` | `noglob apex-agent --plan` | Plan-first execution mode (review plan before modifying code) |
+| `axy <task>` | `noglob apex-agent --trust yolo` | Hands-free zero-nag execution (auto-executes shell & file tools) |
+| `axpar <task>`| `noglob apex-agent --parallel 8`| 8-thread concurrent parallel tool execution (reads, greps, fetches) |
+| `axswarm <task>`|`noglob apex-agent --swarm`| Autonomous subagent swarm delegation under MASS barrier discipline |
+| `text <to> <msg>`| `noglob apex-sms` | Sovereign SMS/iMessage messenger to contact names or phone numbers |
+| `sms <to> <msg>` | `noglob apex-sms` | SMS Messenger alias |
+| `axr` | `apex-remote` | Remote iPhone 14 PWA & Cloudflare Zero-Trust Tunnel Command Center |
+| `axv` | `apex-voice` | Voice-to-Build Intelligence Studio with macOS Speech & audio reply |
 | `ai <request>` | `noglob venice` | Natural-Language Semantic Neural Router across 9 Venice Models |
 | `sandbox <task>`| `noglob apex-sandbox` | Synthesize script, run in Hermetic Sandbox, and self-heal errors |
 | `canvas <ui>` | `noglob apex-canvas` | Build live interactive HTML5/Tailwind/JS web app & open in Browser |
@@ -260,6 +269,75 @@ cat handler.ts | ollama run llama3 "Check for IDOR, SQL injection, and uncaught 
 
 # Query local OpenAI-compatible API endpoint directly
 curl http://localhost:11434/api/generate -d '{"model": "llama3", "prompt": "Scaffold a zod schema for user auth", "stream": false}'
+```
+
+---
+
+## ⚔️ 8. APEX-AGENT (CLAUDE-CODE-KILLER AGENTIC CODING SUITE)
+
+```zsh
+# Run agentic coding loop on current project (read -> edit -> test -> verify)
+ax "Fix failing tests in tests/auth.test.ts"
+
+# Plan first: produces numbered execution plan, asks for approval before editing
+axp "Refactor API routing and add rate limiting"
+
+# Hands-free zero-nag mode (auto-approves non-destructive shell & file edits)
+axy "Update dependencies and verify TypeScript build passes"
+
+# 8-Thread parallel concurrent tool execution (reads, greps, and web fetches in parallel)
+axpar "Audit all files in src/ for deprecated crypto algorithms"
+
+# Multi-agent swarm: decomposes task into concurrent worker agents under MASS barrier discipline
+axswarm "Build frontend auth UI, backend Hono route, and SQLite migration in parallel"
+
+# $0 Local Offline Mode via Ollama (zero API costs, zero rate limits)
+ax --model ollama "Explain this codebase architecture and generate an architecture diagram"
+```
+
+---
+
+## 📱 9. APEX-SMS (SOVEREIGN MACOS MESSAGES & CONTACTS MESSENGER)
+
+```zsh
+# Text a contact by name (automatically resolves from macOS Contacts.app)
+text "Jackie" "The contract and proposal are ready for review on your portal."
+
+# Text any international phone number directly
+text "+19453088003" "MacBook build and verification completed successfully."
+
+# Search address book contacts and phone numbers
+text --search "Jackie"
+# Or:
+sms --search "Rick"
+
+# Interactive prompt mode (prompts for recipient and message)
+text
+```
+
+---
+
+## 🌐 10. APEX-REMOTE & APEX-VOICE (MOBILE IPHONE 14 COMMAND CENTER)
+
+```zsh
+# Launch Encrypted Remote Terminal & Dashboard over Cloudflare Zero-Trust Tunnel
+axr
+# Or:
+apex-remote
+
+# Launch Voice-to-Build Intelligence Studio with macOS Speech & Samantha audio feedback
+axv
+# Or:
+apex-voice
+
+# Remote Web Command Center URL (PWA on iPhone 14):
+# https://apex.empirecontentstudios.com?pin=408100
+# Features:
+# - Live terminal stream (ttyd)
+# - Voice Studio (tap mic to speak commands)
+# - SMS & Text Messenger tab (live address book lookup & text dispatch)
+# - "Hey Siri, Apex Build" Apple Shortcuts webhook (/api/voice-task)
+# - Live MacBook battery, git branch, and CPU load telemetry
 ```
 
 ---

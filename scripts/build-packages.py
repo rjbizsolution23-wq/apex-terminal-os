@@ -58,6 +58,9 @@ def build_all():
     shutil.copy2(REPO_ROOT / "bin/apex", dev_dir / "bin/apex")
     shutil.copy2(REPO_ROOT / "bin/venice", dev_dir / "bin/venice")
     shutil.copy2(REPO_ROOT / "bin/apex-agent", dev_dir / "bin/apex-agent")
+    shutil.copy2(REPO_ROOT / "bin/apex-sms", dev_dir / "bin/apex-sms")
+    shutil.copy2(REPO_ROOT / "bin/apex-remote", dev_dir / "bin/apex-remote")
+    shutil.copy2(REPO_ROOT / "bin/apex-voice", dev_dir / "bin/apex-voice")
     shutil.copy2(REPO_ROOT / "bin/apex-rag", dev_dir / "bin/apex-rag")
     for sheet in sorted((REPO_ROOT / "cheatsheets").glob("0[1-8]-*.txt")):
         shutil.copy2(sheet, dev_dir / "cheatsheets" / sheet.name)
@@ -75,7 +78,10 @@ def build_all():
 **Permitted Activations:** 1 Personal macOS Workstation  
 **Included Modules:**
 - 17-Ability Startup Command Center (`m` / `menu`)
-- `apex-agent` Claude-Code-Style Agentic Coding Loop (`ax`, `axp`, `axy`)
+- `apex-agent v3.0` Claude-Code-Killer Agentic Loop (`ax`, `axp`, `axy`, `axpar`, `axswarm`) with 15-tool arsenal
+- `apex-sms` Sovereign macOS Messages & Contacts Messenger (`text`, `sms`, `axs`)
+- `apex-remote` Encrypted Remote iPhone 14 PWA & Cloudflare Tunnel Command Center (`axr`)
+- `apex-voice` Voice-to-Build Intelligence Studio (`axv`)
 - 500+ Command Fuzzy Arsenal (`apex` + Cheatsheets 01–08)
 - Hermetic Sandbox Runner (`sandbox`) & `runlast`
 - Live Interactive HTML5/Tailwind Canvas Server (`canvas` on port 7799)
@@ -99,7 +105,7 @@ def build_all():
 **Issued by:** RJ Business Solutions (Rick Jefferson, CEO)  
 **Permitted Activations:** Up to 5 macOS Workstations (Founder / Agency Pro)  
 **Included Modules:**
-- Everything in Developer Edition (`apex-agent`, 17-Ability Command Center, Sandbox, Canvas)
+- Everything in Developer Edition (`apex-agent v3.0`, `apex-sms`, `apex-remote`, `apex-voice`, 17-Ability Command Center, Sandbox, Canvas)
 - Complete 2-Stage Semantic Neural Auto-Router across all 9 Venice Uncensored, Obliterated (`abliteration-abliterated-model-large-v2`), Frontier (`zai-org-glm-5-2`), Heretic, Roleplay, Gemma 4, OSS 120B, E2EE & Lustify v8 Image Studio models
 - Cheatsheet `09-venice-uncensored.txt` & `10-open-source-ai-agents.txt`
 - Model Context Protocol (MCP) Server (`apex-mcp`)
@@ -107,6 +113,7 @@ def build_all():
 - Multi-File Full-Stack Project Forge (`forge`)
 - Zero-Downtime Sovereign Failover Engine (Venice + GLM + OpenRouter + Ollama $0 automatic backup routing)
 - Adversarial Git Security Auditor (`uaudit` & `aicommit`)
+- Persistent Cross-Session SQLite Memory Engine (`remember_insight` / `semantic_search_memory`)
 
 © 2026 RJ Business Solutions · 1342 NM 333, Tijeras, New Mexico 87059
 """, encoding="utf-8")

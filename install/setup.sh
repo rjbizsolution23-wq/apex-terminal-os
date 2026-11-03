@@ -53,17 +53,22 @@ cp -r "$REPO_DIR/config/apex-layout.kdl" "$HOME/.config/arsenal/apex-layout.kdl"
 cp -r "$REPO_DIR/config/apex-seatbelt.sb" "$HOME/.config/arsenal/apex-seatbelt.sb" 2>/dev/null || true
 cp -r "$REPO_DIR/config/litellm_config.yaml" "$HOME/.config/arsenal/litellm_config.yaml" 2>/dev/null || true
 
-# Install core binaries (apex + venice sovereign OS + RAG + MCP + Keygen + Whitelabel)
+# Install core binaries (apex + venice sovereign OS + RAG + MCP + Keygen + Whitelabel + Agent + Remote + Voice + SMS)
 cp "$REPO_DIR/bin/apex" "$HOME/.local/bin/apex"
 cp "$REPO_DIR/bin/venice" "$HOME/.local/bin/venice"
 chmod +x "$HOME/.local/bin/apex" "$HOME/.local/bin/venice"
-for extra_bin in apex-agent apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
+for extra_bin in apex-agent apex-remote apex-voice apex-sms apex-rag apex-mcp apex-keygen-server apex-whitelabel apex-fulfill; do
     if [ -f "$REPO_DIR/bin/$extra_bin" ]; then
         cp "$REPO_DIR/bin/$extra_bin" "$HOME/.local/bin/$extra_bin"
         chmod +x "$HOME/.local/bin/$extra_bin"
     fi
 done
 ln -sf "$HOME/.local/bin/apex-whitelabel" "$HOME/.local/bin/apex-monetize" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-sms" "$HOME/.local/bin/text" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-sms" "$HOME/.local/bin/sms" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-sms" "$HOME/.local/bin/axs" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-remote" "$HOME/.local/bin/axr" 2>/dev/null || true
+ln -sf "$HOME/.local/bin/apex-voice" "$HOME/.local/bin/axv" 2>/dev/null || true
 
 # Create all sovereign execution symlinks
 SYMLINKS=(
@@ -127,6 +132,9 @@ echo -e "\033[1;32m=============================================================
 echo -e "\033[1;32m  ✓ APEX TERMINAL OS v2.0 INSTALLED SUCCESSFULLY!                     \033[0m"
 echo -e "\033[1;32m======================================================================\033[0m"
 echo -e "Run:  \033[1;33msource ~/.zshrc\033[0m"
-echo -e "Menu: \033[1;33mm\033[0m or \033[1;33mmenu\033[0m (Launches 13-Ability Command Center)"
+echo -e "Menu: \033[1;33mm\033[0m or \033[1;33mmenu\033[0m (Launches Startup Command Center)"
+echo -e "Agent:\033[1;33max \"task\"\033[0m | \033[1;33maxp \"plan\"\033[0m | \033[1;33maxy \"yolo\"\033[0m (Claude-Code-Killer loop)"
+echo -e "SMS:  \033[1;33mtext \"Contact/Number\" \"Message\"\033[0m (Native macOS Messages messenger)"
+echo -e "Phone:\033[1;33maxr\033[0m (Remote iPhone 14 tunnel) | \033[1;33maxv\033[0m (Voice intelligence studio)"
 echo -e "AI:   \033[1;33mai <natural language>\033[0m | \033[1;33msandbox <task>\033[0m | \033[1;33mcanvas <ui>\033[0m"
 echo -e "Sell: \033[1;33mapex-whitelabel\033[0m or \033[1;33mapex-monetize\033[0m (Add your Logo, Brand & Stripe Keys to resell)"
