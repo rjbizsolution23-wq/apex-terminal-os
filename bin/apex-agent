@@ -94,7 +94,70 @@ def build_provider_chain(requested_model: str = "") -> List[Tuple[str, str, str,
     return chain
 
 
-# ---------- Complete 13-Tool High-Performance Arsenal ----------
+# ---------- Sovereign macOS SMS & Contacts Integration ----------
+def clean_phone_number(raw: str) -> str:
+    """Normalize phone numbers to E.164 international format (+1XXXXXXXXXX for US)."""
+    digits = re.sub(r"[^\d+]", "", raw.strip())
+    if digits.startswith("+"):
+        return digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+1" + digits
+    return "+" + digits if digits else ""
+
+
+def find_contacts(query: str) -> List[Tuple[str, str]]:
+    """Query macOS Contacts.app via AppleScript for matching names and phone numbers."""
+    safe_query = query.replace('\\', '\\\\').replace('"', '\\"')
+    script = f'''
+    tell application "Contacts"
+        set pList to (people whose name contains "{safe_query}")
+        set outList to {{}}
+        repeat with p in pList
+            set pName to name of p
+            repeat with ph in phones of p
+                set end of outList to (pName & "|" & (value of ph))
+            end repeat
+        end repeat
+        return outList
+    end tell
+    '''
+    res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if res.returncode != 0 or not res.stdout.strip():
+        return []
+    results = []
+    entries = [e.strip() for e in res.stdout.strip().split(", ")]
+    for entry in entries:
+        if "|" in entry:
+            name, phone = entry.split("|", 1)
+            results.append((name.strip(), phone.strip()))
+    return results
+
+
+def send_imessage(recipient_phone: str, message: str) -> Tuple[bool, str]:
+    """Dispatch an iMessage or SMS via macOS Messages.app from Rick's phone number."""
+    safe_msg = message.replace('\\', '\\\\').replace('"', '\\"')
+    script = f'''
+    tell application "Messages"
+        try
+            set s to 1st service whose service type is iMessage
+            set b to buddy "{recipient_phone}" of s
+            send "{safe_msg}" to b
+            return "OK"
+        on error err
+            return "ERROR: " & err
+        end try
+    end tell
+    '''
+    res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    out = res.stdout.strip()
+    if "OK" in out:
+        return True, "Delivered via macOS Messages.app"
+    return False, out or res.stderr.strip() or "Failed to send message"
+
+
+# ---------- Complete 15-Tool High-Performance Arsenal ----------
 TOOLS = [
     {
         "type": "function",
@@ -296,6 +359,35 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_contacts",
+            "description": "Search macOS Contacts address book by name to find contact phone numbers and details.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Name or keyword to search in Contacts (e.g. 'Jackie')"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_sms",
+            "description": "Send an SMS or iMessage text directly to a phone number or contact name using Rick Jefferson's mobile phone number (+1 945-308-8003) via macOS Messages.app.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "recipient": {"type": "string", "description": "Phone number (e.g. '+19453088003') or contact name (e.g. 'Jackie')"},
+                    "message": {"type": "string", "description": "Text message content to send"},
+                },
+                "required": ["recipient", "message"],
+            },
+        },
+    },
 ]
 
 # Tools safe to execute concurrently in parallel threads
@@ -307,6 +399,7 @@ READ_ONLY_TOOLS = {
     "git_diff_patch",
     "fetch_web",
     "semantic_search_memory",
+    "search_contacts",
 }
 
 
@@ -538,6 +631,40 @@ def execute_single_tool(name: str, args: Dict[str, Any], trust: str, allow_cmds:
                 summary.append(f"\n--- Worker #{idx}: {st} ---\n{r_text}")
             return "\n".join(summary)
 
+        elif name == "search_contacts":
+            query = args["query"]
+            matches = find_contacts(query)
+            if not matches:
+                return f"No contacts found in macOS address book matching '{query}'"
+            out = [f"Found {len(matches)} contact(s) for '{query}':"]
+            for idx, (cname, ph) in enumerate(matches, 1):
+                out.append(f"{idx}. {cname} -> {clean_phone_number(ph)} (raw: {ph})")
+            return "\n".join(out)
+
+        elif name == "send_sms":
+            recipient = args["recipient"]
+            msg = args["message"]
+            target_phone = clean_phone_number(recipient)
+            target_name = recipient
+            if not re.search(r"^\+?[\d\s\-\(\)\.]{7,20}$", recipient):
+                matches = find_contacts(recipient)
+                if matches:
+                    target_name, raw_ph = matches[0]
+                    target_phone = clean_phone_number(raw_ph)
+                else:
+                    return f"ERROR: Could not resolve contact '{recipient}' in macOS Contacts and it is not a valid phone number."
+
+            if trust != "yolo":
+                print(f"\033[33m  📱 SMS / iMessage to {target_name} ({target_phone}): \"{msg}\"\033[0m")
+                if input("  Send text? [y/N] ").strip().lower() != "y":
+                    return "user denied SMS transmission"
+
+            ok, detail = send_imessage(target_phone, msg)
+            if ok:
+                return f"✓ SMS/iMessage successfully sent to {target_name} ({target_phone}) from Rick's number (+1 945-308-8003): \"{msg}\""
+            else:
+                return f"ERROR sending text to {target_name} ({target_phone}): {detail}"
+
     except Exception as e:
         return f"TOOL_ERROR in {name}: {e}"
 
@@ -756,7 +883,9 @@ def main() -> None:
         "- fetch_web: fetch online documentation, API schemas, and GitHub resources\n"
         "- run_applescript: macOS native GUI, application, and notification automation\n"
         "- spawn_parallel_workers: spawn concurrent subagents for independent parallel tasks\n"
-        "- remember_insight, semantic_search_memory: persistent cross-session SQLite memory\n\n"
+        "- remember_insight, semantic_search_memory: persistent cross-session SQLite memory\n"
+        "- search_contacts: search macOS address book by name for contacts and phone numbers\n"
+        "- send_sms: dispatch SMS / iMessage texts to contacts or phone numbers from Rick's iPhone 14 number (+1 945-308-8003) via macOS Messages.app\n\n"
         "EXECUTION DISCIPLINE:\n"
         "1. For multi-file inspection or searches, issue multiple tool calls in a single turn — they will execute in parallel concurrently!\n"
         "2. When editing code, ALWAYS run verification tests via run_shell before declaring completion.\n"
