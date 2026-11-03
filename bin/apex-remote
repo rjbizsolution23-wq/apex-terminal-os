@@ -50,6 +50,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Apex Remote · Sovereign Voice Command Center</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Apex OS">
+  <link rel="apple-touch-icon" href="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg">
+  <link rel="icon" href="https://storage.googleapis.com/msgsndr/qQnxRHDtyx0uydPd5sRl/media/67eb83c5e519ed689430646b.jpeg">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -477,6 +482,11 @@ class SovereignRemoteHandler(http.server.BaseHTTPRequestHandler):
     ttyd_port: int = 7681
     pin: str = "749201"
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+
     def do_GET(self):
         url_parts = urllib.parse.urlparse(self.path)
         path = url_parts.path
@@ -558,8 +568,11 @@ class SovereignRemoteHandler(http.server.BaseHTTPRequestHandler):
             cmd.extend(["--model", model])
             cmd.append(task)
 
-            # Run apex-agent
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            # Run apex-agent in workspace dir
+            work_dir = os.environ.get("WORKSPACE_DIR") or str(pathlib.Path.home() / "Downloads" / "Super-agents266")
+            if not pathlib.Path(work_dir).exists():
+                work_dir = str(pathlib.Path.home())
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=180, cwd=work_dir)
             full_output = (r.stdout + r.stderr).strip()
 
             summary = f"Task completed on your MacBook: {task[:40]}"
@@ -629,8 +642,9 @@ class SovereignRemoteHandler(http.server.BaseHTTPRequestHandler):
 
 # ---------- Cloudflare Tunnel Runner ----------
 def start_cloudflare_tunnel(port: int) -> Tuple[subprocess.Popen, str]:
+    cloudflared_bin = shutil.which("cloudflared") or "/opt/homebrew/bin/cloudflared"
     proc = subprocess.Popen(
-        ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"],
+        [cloudflared_bin, "tunnel", "--url", f"http://localhost:{port}"],
         stderr=subprocess.PIPE,
         stdout=subprocess.DEVNULL,
         text=True,
@@ -669,6 +683,7 @@ def main() -> None:
             AUTH_FILE.write_text(pin)
 
     # 1. Start ttyd
+    ttyd_bin = shutil.which("ttyd") or "/opt/homebrew/bin/ttyd"
     print("\033[1;36m╭─ 🌐 STARTING APEX REMOTE & SOVEREIGN VOICE COMMAND CENTER\033[0m")
     print(f"\033[1;34m├─ 🖥️  Launching ttyd Terminal on :7681 (user: rick | PIN: {pin})\033[0m")
     
@@ -676,14 +691,19 @@ def main() -> None:
     subprocess.run(["pkill", "-f", f"ttyd.*{args.ttyd_port}"], capture_output=True)
     time.sleep(0.3)
 
+    work_dir = os.environ.get("WORKSPACE_DIR") or str(pathlib.Path.home() / "Downloads" / "Super-agents266")
+    if not pathlib.Path(work_dir).exists():
+        work_dir = str(pathlib.Path.home())
+
     ttyd_proc = subprocess.Popen(
-        ["ttyd", "-W", "-b", "/terminal", "-p", str(args.ttyd_port), "-c", f"rick:{pin}", "zsh"],
+        [ttyd_bin, "-W", "-b", "/terminal", "-p", str(args.ttyd_port), "-c", f"rick:{pin}", "-w", work_dir, "zsh"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     time.sleep(0.5)
 
     # 2. Start Gateway Server on 7795
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
     SovereignRemoteHandler.ttyd_port = args.ttyd_port
     SovereignRemoteHandler.pin = pin
     server = socketserver.ThreadingTCPServer(("0.0.0.0", args.port), SovereignRemoteHandler)
