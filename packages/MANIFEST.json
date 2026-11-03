@@ -7,10 +7,10 @@
       "master_unlock_code": "RJ-DEV-2026",
       "zip_file": "packages/apex-terminal-os-developer-v2.0.zip",
       "zip_size_bytes": 52147,
-      "zip_sha256": "13d0f4846b8fb7e995e9af84cc9688bd95b188d2864edbd6eebd848ad489c41f",
+      "zip_sha256": "8d90cb45c90ddf986a33c02a238ae50bb96fb69c1673850ffe35fc2c7f670c01",
       "tar_file": "packages/apex-terminal-os-developer-v2.0.tar.gz",
-      "tar_size_bytes": 45606,
-      "tar_sha256": "8b0c6b03ca90b806e9d50dc4a6ef0f54609e7a74e82ef784e8fb7257b11b803b"
+      "tar_size_bytes": 45595,
+      "tar_sha256": "e4c5a48397a74c584c4deb9e7eca21437e1e9ad9b13dea8fc9a6caa703aef345"
     },
     "sovereign": {
       "tier": "sovereign",
@@ -18,10 +18,10 @@
       "master_unlock_code": "RJ-SOV-2026",
       "zip_file": "packages/apex-terminal-os-sovereign-pro-v2.0.zip",
       "zip_size_bytes": 60783,
-      "zip_sha256": "22034e2c532f066f97dc7926d4c8732512914ddf44fb1af78e3b09b567c21867",
+      "zip_sha256": "03f697ee3f5206880c644869e60d43f5c858a7b3f06c5e4305be45d3be83bdef",
       "tar_file": "packages/apex-terminal-os-sovereign-pro-v2.0.tar.gz",
-      "tar_size_bytes": 51587,
-      "tar_sha256": "11742878a40f3b7c0724f8478760a94619a6ca45c60a100dec4f9e9992cab274"
+      "tar_size_bytes": 51583,
+      "tar_sha256": "06a06931ab956a9a5d4c45b99940ba11eae0044ad994a1bd2af53b51210af1bf"
     },
     "enterprise": {
       "tier": "enterprise",
@@ -29,10 +29,10 @@
       "master_unlock_code": "RJ-ENT-2026",
       "zip_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.zip",
       "zip_size_bytes": 96102,
-      "zip_sha256": "3aafc506a07a3208a280a2ac02793152b9643aa867a7d2365866f558eca56ad5",
+      "zip_sha256": "a883d37205aec12bb72e2d7d083ddf39f3696fcda1f016b39d59c1583fbc97d3",
       "tar_file": "packages/apex-terminal-os-enterprise-whitelabel-v2.0.tar.gz",
-      "tar_size_bytes": 83043,
-      "tar_sha256": "f3c0a10bcdbef3148398db5c3555bcb54223a92c5e57bdab9563f1d17032f823"
+      "tar_size_bytes": 83042,
+      "tar_sha256": "bbe7400d1ff5686232b171eec5a81a3a7f2dcae323ca8c5e55e3930611d43da3"
     }
   }
 }
