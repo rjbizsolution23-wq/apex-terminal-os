@@ -70,8 +70,33 @@ def clean_phone_number(raw: str) -> str:
     return "+" + digits if digits else ""
 
 
+CLIENTS_FILE = os.path.expanduser("~/.apex-workspace/clients.json")
+
+def load_clients() -> List[Dict]:
+    if not os.path.exists(CLIENTS_FILE):
+        return []
+    try:
+        with open(CLIENTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
 def find_contacts(query: str):
-    """Query macOS Contacts.app via AppleScript for matching names and phone numbers."""
+    """Query ~/.apex-workspace/clients.json and macOS Contacts for matching names and phone numbers."""
+    results = []
+    q_clean = clean_phone_number(query)
+    q_lower = query.strip().lower()
+
+    # 1. Check clients.json first
+    for c in load_clients():
+        cname = c.get("name", "")
+        cphone = c.get("phone", "")
+        if (q_lower and q_lower in cname.lower()) or (q_clean and clean_phone_number(cphone) == q_clean):
+            results.append((f"{cname} [Client]", cphone))
+
+    # 2. Query macOS Contacts via AppleScript
     safe_query = query.replace('\\', '\\\\').replace('"', '\\"')
     script = f'''
     tell application "Contacts"
@@ -87,36 +112,45 @@ def find_contacts(query: str):
     end tell
     '''
     res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-    if res.returncode != 0 or not res.stdout.strip():
-        return []
-    results = []
-    entries = [e.strip() for e in res.stdout.strip().split(", ")]
-    for entry in entries:
-        if "|" in entry:
-            name, phone = entry.split("|", 1)
-            results.append((name.strip(), phone.strip()))
+    if res.returncode == 0 and res.stdout.strip():
+        entries = [e.strip() for e in res.stdout.strip().split(", ")]
+        for entry in entries:
+            if "|" in entry:
+                name, phone = entry.split("|", 1)
+                results.append((name.strip(), phone.strip()))
     return results
 
 
 def send_imessage(recipient_phone: str, message: str) -> Tuple[bool, str]:
-    """Dispatch an iMessage or SMS via macOS Messages.app from Rick's phone number."""
+    """Dispatch an iMessage or SMS via macOS Messages.app with automatic dual-route fallback."""
     safe_msg = message.replace('\\', '\\\\').replace('"', '\\"')
+    safe_phone = recipient_phone.replace('\\', '\\\\').replace('"', '\\"')
     script = f'''
     tell application "Messages"
+        -- Try iMessage first
         try
-            set s to 1st service whose service type is iMessage
-            set b to buddy "{recipient_phone}" of s
-            send "{safe_msg}" to b
-            return "OK"
-        on error err
-            return "ERROR: " & err
+            set s to 1st account whose service type is iMessage
+            set p to participant "{safe_phone}" of s
+            send "{safe_msg}" to p
+            return "OK:iMessage"
+        on error err1
+            -- Fallback to Cellular SMS
+            try
+                set s to 1st account whose service type is SMS
+                set p to participant "{safe_phone}" of s
+                send "{safe_msg}" to p
+                return "OK:SMS"
+            on error err2
+                return "FAIL: iMessage(" & err1 & ") | SMS(" & err2 & ")"
+            end try
         end try
     end tell
     '''
     res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     out = res.stdout.strip()
-    if "OK" in out:
-        return True, "Delivered via macOS Messages.app"
+    if out.startswith("OK:"):
+        route = out.split(":", 1)[1]
+        return True, f"Delivered via {route}"
     return False, out or res.stderr.strip() or "Failed to send message"
 
 
@@ -555,6 +589,30 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           </span>
         </div>
 
+        <!-- Voice Dictate to Client Card -->
+        <div class="mb-5 p-4 rounded-xl bg-gradient-to-r from-blue-950/60 via-slate-900 to-slate-900 border border-blue-600/40 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-3.5 w-full sm:w-auto">
+            <button onclick="toggleVoiceSmsDictation()" id="btn-voice-sms" class="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 transition flex-shrink-0 cursor-pointer">
+              <span id="voice-sms-icon">🎙️</span>
+            </button>
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-white uppercase tracking-wider">Voice Dictate to Client</span>
+                <span id="voice-sms-badge" class="hidden text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">Listening...</span>
+              </div>
+              <p id="voice-sms-hint" class="text-xs text-slate-300 mt-0.5">
+                Tap mic &amp; speak: <span class="text-sky-400 font-medium">"Text [Client Name] that [your message]"</span>
+              </p>
+            </div>
+          </div>
+          <div id="voice-sms-actions" class="hidden flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button onclick="stopVoiceSmsDictation()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">Cancel</button>
+            <button onclick="sendRemoteSms()" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-md transition flex items-center gap-1.5">
+              <span>🚀</span> <span>Send Now</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Recipient & Search -->
         <div class="space-y-2 mb-4">
           <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -906,6 +964,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const task = document.getElementById('task-input').value.trim();
       if (!task) return;
 
+      // Intercept spoken SMS/text commands from Voice Studio
+      const smsTrigPat = /^(?:send\\s+a\\s+text\\s+to|send\\s+text\\s+to|send\\s+an?\\s+sms\\s+to|send\\s+message\\s+to|shoot\\s+a\\s+text\\s+to|text|tell|sms)\\s+/i;
+      if (smsTrigPat.test(task)) {
+        switchTab('sms');
+        parseAndFillSmsVoice(task);
+        if ('speechSynthesis' in window) {
+          const utter = new SpeechSynthesisUtterance("Voice text parsed for client. Ready to dispatch.");
+          utter.rate = 1.05;
+          window.speechSynthesis.speak(utter);
+        }
+        return;
+      }
+
       const model = document.getElementById('model-select').value;
       const yolo = document.getElementById('trust-yolo').checked;
       const audioFeedback = document.getElementById('audio-feedback').checked;
@@ -999,6 +1070,133 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const frame = document.getElementById('terminal-frame');
       if (frame && frame.contentWindow) {
         frame.contentWindow.postMessage({ type: 'stdin', data: text }, '*');
+      }
+    }
+
+    // ---------- Voice SMS Dictation Engine ----------
+    let voiceSmsRecognition = null;
+    let isVoiceSmsRecording = false;
+
+    function toggleVoiceSmsDictation() {
+      if (isVoiceSmsRecording) {
+        stopVoiceSmsDictation();
+      } else {
+        startVoiceSmsDictation();
+      }
+    }
+
+    function startVoiceSmsDictation() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition is not supported in this browser. Please tap the text box and use the microphone key on your iPhone keyboard (🎙️).");
+        return;
+      }
+
+      if (navigator.vibrate) navigator.vibrate([60]);
+
+      try {
+        voiceSmsRecognition = new SpeechRecognition();
+        voiceSmsRecognition.continuous = false;
+        voiceSmsRecognition.interimResults = true;
+        voiceSmsRecognition.lang = 'en-US';
+
+        const btn = document.getElementById('btn-voice-sms');
+        const icon = document.getElementById('voice-sms-icon');
+        const badge = document.getElementById('voice-sms-badge');
+        const hint = document.getElementById('voice-sms-hint');
+        const actions = document.getElementById('voice-sms-actions');
+
+        voiceSmsRecognition.onstart = () => {
+          isVoiceSmsRecording = true;
+          if (badge) badge.classList.remove('hidden');
+          if (actions) actions.classList.remove('hidden');
+          if (btn) {
+            btn.classList.add('bg-rose-600', 'animate-pulse');
+            btn.classList.remove('bg-blue-600');
+          }
+          if (icon) icon.textContent = '⏹️';
+          if (hint) hint.innerHTML = '<span class="text-emerald-400 font-semibold animate-pulse">Listening... Speak recipient &amp; message now.</span>';
+        };
+
+        voiceSmsRecognition.onresult = (event) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            transcript += event.results[i][0].transcript;
+          }
+          transcript = transcript.trim();
+          if (hint) hint.innerHTML = `Heard: <span class="text-white font-medium">"${escapeHtml(transcript)}"</span>`;
+          parseAndFillSmsVoice(transcript);
+        };
+
+        voiceSmsRecognition.onerror = (event) => {
+          console.warn('Voice SMS recognition error:', event.error);
+          stopVoiceSmsDictation();
+          if (hint) hint.innerHTML = `<span class="text-rose-400">Speech note: ${escapeHtml(event.error)}. Try speaking again or type below.</span>`;
+        };
+
+        voiceSmsRecognition.onend = () => {
+          stopVoiceSmsDictation();
+        };
+
+        voiceSmsRecognition.start();
+      } catch (err) {
+        console.error('SpeechRecognition start failed:', err);
+        stopVoiceSmsDictation();
+      }
+    }
+
+    function stopVoiceSmsDictation() {
+      isVoiceSmsRecording = false;
+      if (voiceSmsRecognition) {
+        try { voiceSmsRecognition.stop(); } catch(e) {}
+        voiceSmsRecognition = null;
+      }
+      const btn = document.getElementById('btn-voice-sms');
+      const icon = document.getElementById('voice-sms-icon');
+      const badge = document.getElementById('voice-sms-badge');
+      const hint = document.getElementById('voice-sms-hint');
+      const actions = document.getElementById('voice-sms-actions');
+
+      if (btn) {
+        btn.classList.remove('bg-rose-600', 'animate-pulse');
+        btn.classList.add('bg-blue-600');
+      }
+      if (icon) icon.textContent = '🎙️';
+      if (badge) badge.classList.add('hidden');
+      if (actions) actions.classList.add('hidden');
+    }
+
+    function parseAndFillSmsVoice(text) {
+      text = text.replace(/^[\\.\\,\\s]+|[\\.\\,\\s]+$/g, '');
+      const sepPatterns = [
+        /^(?:send\\s+a\\s+text\\s+to|send\\s+text\\s+to|send\\s+an?\\s+sms\\s+to|send\\s+message\\s+to|shoot\\s+a\\s+text\\s+to|text|tell|send|message|sms)\\s+(?:to\\s+)?(.+?)\\s+(?:that|saying|to say|and say)\\s+(.+)$/i,
+        /^(?:send\\s+a\\s+text\\s+to|send\\s+text\\s+to|send\\s+an?\\s+sms\\s+to|send\\s+message\\s+to|shoot\\s+a\\s+text\\s+to|text|tell|send|message|sms)\\s+(?:to\\s+)?(.+?)\\s*:\\s*(.+)$/i
+      ];
+      for (let pat of sepPatterns) {
+        const m = text.match(pat);
+        if (m) {
+          document.getElementById('sms-recipient').value = m[1].trim();
+          document.getElementById('sms-message').value = m[2].trim();
+          updateSmsCharCount();
+          searchAddressBook();
+          return;
+        }
+      }
+      const simplePat = /^(?:send\\s+a\\s+text\\s+to|send\\s+text\\s+to|send\\s+an?\\s+sms\\s+to|send\\s+message\\s+to|shoot\\s+a\\s+text\\s+to|text|tell|send|message|sms)\\s+(?:to\\s+)?([a-zA-Z0-9\\+\\-]+)\\s+(.+)$/i;
+      const m2 = text.match(simplePat);
+      if (m2) {
+        document.getElementById('sms-recipient').value = m2[1].trim();
+        document.getElementById('sms-message').value = m2[2].trim();
+        updateSmsCharCount();
+        searchAddressBook();
+        return;
+      }
+      // If user only said recipient name
+      const trigOnly = /^(?:send\\s+a\\s+text\\s+to|send\\s+text\\s+to|send\\s+an?\\s+sms\\s+to|send\\s+message\\s+to|shoot\\s+a\\s+text\\s+to|text|tell|send|message|sms)\\s+(?:to\\s+)?(.+)$/i;
+      const m3 = text.match(trigOnly);
+      if (m3) {
+        document.getElementById('sms-recipient').value = m3[1].trim();
+        searchAddressBook();
       }
     }
 

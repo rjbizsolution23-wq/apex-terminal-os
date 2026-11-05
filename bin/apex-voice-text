@@ -1,0 +1,490 @@
+#!/usr/bin/env python3
+"""
+apex-voice-text — Autonomous Voice-Driven Client Texting Suite
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+Enables hands-free voice texting to clients from Rick's iPhone 14 (+1 945-308-8003).
+
+Features:
+  - Spoken Intent Parsing: "Text [Client Name] that [Your Message]"
+  - Interactive Voice Mode: Asks aloud "Who do you want to text?" -> speaks message -> confirms & sends
+  - Dual iMessage + Cellular SMS Routing (works on iPhone & Android clients)
+  - Integrated with ~/.apex-workspace/clients.json & macOS AddressBook
+  - Speech Synthesis via macOS /usr/bin/say
+  - Local Whisper Speech-to-Text Transcription via /opt/homebrew/bin/whisper
+
+Usage:
+  apex-voice-text                                      # Interactive Voice Mode (speaks & listens)
+  apex-voice-text "Text Jackie I am on my way"          # Spoken/dictated command
+  apex-voice-text "Jackie" "I am on my way"             # Direct recipient & message
+  apex-voice-text add "John Doe" "+12145551234"         # Add a new client
+  apex-voice-text list                                 # View active client directory
+  apex-voice-text --web                                # Open mobile web Voice SMS Studio
+
+Aliases:
+  voicetext, axvt, vtext
+"""
+
+import os
+import sys
+import re
+import json
+import time
+import glob
+import shutil
+import pathlib
+import argparse
+import subprocess
+from typing import List, Tuple, Optional, Dict
+
+CLIENTS_FILE = os.path.expanduser("~/.apex-workspace/clients.json")
+WHISPER_BIN = "/opt/homebrew/bin/whisper"
+REC_BIN = "/opt/homebrew/bin/rec"
+VOICE_NAME = "Samantha"
+
+
+def speak(text: str, wait: bool = True):
+    """Speak text through MacBook speakers using macOS say."""
+    try:
+        clean = re.sub(r'[\'\"`\$\\\*]', '', text)
+        cmd = ["say", "-v", VOICE_NAME, clean]
+        if wait:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
+def clean_phone_number(raw: str) -> str:
+    """Normalize phone number to E.164-like standard format."""
+    digits = re.sub(r'\D', '', raw or "")
+    if len(digits) == 10:
+        return "+1" + digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    return "+" + digits if digits else ""
+
+
+def load_clients() -> List[Dict]:
+    """Load client directory from ~/.apex-workspace/clients.json."""
+    if not os.path.exists(CLIENTS_FILE):
+        return []
+    try:
+        with open(CLIENTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def save_clients(clients: List[Dict]):
+    """Persist client directory to ~/.apex-workspace/clients.json."""
+    os.makedirs(os.path.dirname(CLIENTS_FILE), exist_ok=True)
+    with open(CLIENTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(clients, f, indent=2)
+
+
+def get_all_contact_names() -> List[str]:
+    """Return all known names from clients.json and macOS AddressBook."""
+    names = []
+    # 1. Clients
+    for c in load_clients():
+        if c.get("name"):
+            names.append(c["name"])
+    # 2. macOS Contacts
+    for path in glob.glob(os.path.expanduser('~/Library/Application Support/AddressBook/Sources/*/AddressBook-v22.abcddb')):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT r.ZFIRSTNAME, r.ZLASTNAME
+                FROM ZABCDRECORD r
+                WHERE r.ZFIRSTNAME IS NOT NULL OR r.ZLASTNAME IS NOT NULL
+            ''')
+            for fn, ln in cur.fetchall():
+                cname = f"{fn or ''} {ln or ''}".strip()
+                if cname and cname not in names:
+                    names.append(cname)
+            conn.close()
+        except Exception:
+            pass
+    return names
+
+
+def resolve_client(query: str) -> Optional[Dict]:
+    """Resolve a query (name, partial name, or phone number) to contact details."""
+    query_clean = clean_phone_number(query)
+    q_lower = query.strip().lower()
+    clients = load_clients()
+
+    # 1. Match in client list by phone or name
+    for c in clients:
+        if clean_phone_number(c.get('phone', '')) == query_clean and query_clean:
+            return c
+        if q_lower in c.get('name', '').lower():
+            return c
+
+    # 2. Check macOS Contacts AddressBook SQLite
+    for path in glob.glob(os.path.expanduser('~/Library/Application Support/AddressBook/Sources/*/AddressBook-v22.abcddb')):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT r.ZFIRSTNAME, r.ZLASTNAME, p.ZFULLNUMBER
+                FROM ZABCDPHONENUMBER p
+                JOIN ZABCDRECORD r ON p.ZOWNER = r.Z_PK
+            ''')
+            for fn, ln, num in cur.fetchall():
+                if num:
+                    cname = f"{fn or ''} {ln or ''}".strip()
+                    cphone = clean_phone_number(num)
+                    if (q_lower and q_lower in cname.lower()) or (query_clean and cphone == query_clean):
+                        conn.close()
+                        return {"name": cname, "phone": cphone, "category": "AddressBook Contact", "status": "Active"}
+            conn.close()
+        except Exception:
+            pass
+
+    # 3. Direct valid phone number
+    digits = re.sub(r'\D', '', query)
+    if len(digits) >= 10:
+        return {"name": query, "phone": clean_phone_number(query), "category": "Direct Phone Number", "status": "Active"}
+
+    return None
+
+
+def parse_voice_command(text: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract recipient and message from natural spoken phrases like:
+      - "text Melissa that your dispute letter has been mailed today"
+      - "text Jackie saying I will be there in 10 minutes"
+      - "send a text to John Doe that I am outside"
+      - "text 9453088003 hello world"
+    """
+    text = text.strip().rstrip('.?!')
+    if not text:
+        return None, None
+
+    # Step A: Explicit keyword separators
+    sep_patterns = [
+        r'^(?:send\s+a\s+text\s+to|send\s+text\s+to|send\s+an?\s+sms\s+to|send\s+message\s+to|shoot\s+a\s+text\s+to|text|tell|send|message|sms)\s+(?:to\s+)?(.+?)\s+(?:that|saying|to say|and say)\s+(.+)$',
+        r'^(?:send\s+a\s+text\s+to|send\s+text\s+to|send\s+an?\s+sms\s+to|send\s+message\s+to|shoot\s+a\s+text\s+to|text|tell|send|message|sms)\s+(?:to\s+)?(.+?)\s*:\s*(.+)$'
+    ]
+    for pat in sep_patterns:
+        m = re.match(pat, text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip(), m.group(2).strip()
+
+    # Step B: Match against known contact names
+    known = get_all_contact_names()
+    trigger_pat = r'^(?:send\s+a\s+text\s+to|send\s+text\s+to|send\s+an?\s+sms\s+to|send\s+message\s+to|shoot\s+a\s+text\s+to|text|tell|send|message|sms)\s+(?:to\s+)?(.+)$'
+    m_trig = re.match(trigger_pat, text, re.IGNORECASE)
+    if m_trig:
+        remainder = m_trig.group(1).strip()
+        # Sort by length descending to match full names first
+        for name in sorted(known, key=len, reverse=True):
+            if remainder.lower().startswith(name.lower()):
+                msg = remainder[len(name):].strip()
+                if msg:
+                    return name, msg
+        # If not a known name, split at first word or phone number
+        parts = remainder.split(' ', 1)
+        if len(parts) == 2:
+            return parts[0].strip(), parts[1].strip()
+
+    return None, text
+
+
+def record_audio(dest_wav: str, max_seconds: int = 5) -> bool:
+    """Record microphone audio to dest_wav using SoX/rec."""
+    if not shutil.which("rec"):
+        return False
+    try:
+        # Record with silence detection: stops 1.2s after user stops speaking
+        cmd = [
+            REC_BIN, "-q", "-c", "1", "-r", "16000", dest_wav,
+            "silence", "1", "0.1", "3%", "1", "1.2", "3%",
+            "trim", "0", str(max_seconds)
+        ]
+        subprocess.run(cmd, timeout=max_seconds + 3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return os.path.exists(dest_wav) and os.path.getsize(dest_wav) > 1000
+    except Exception:
+        return False
+
+
+def transcribe_audio(wav_path: str) -> str:
+    """Transcribe audio file using local Whisper tiny.en model."""
+    if not os.path.exists(WHISPER_BIN) or not os.path.exists(wav_path):
+        return ""
+    try:
+        out_dir = "/tmp/apex_whisper_out"
+        os.makedirs(out_dir, exist_ok=True)
+        txt_path = os.path.join(out_dir, pathlib.Path(wav_path).stem + ".txt")
+        if os.path.exists(txt_path):
+            os.remove(txt_path)
+
+        cmd = [
+            WHISPER_BIN, wav_path,
+            "--model", "tiny.en",
+            "--output_dir", out_dir,
+            "--output_format", "txt",
+            "--fp16", "False"
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+        if os.path.exists(txt_path):
+            with open(txt_path, "r", encoding="utf-8") as f:
+                return f.read().strip()
+    except Exception as e:
+        print(f"\033[1;33m[Whisper Transcription Note: {e}]\033[0m")
+    return ""
+
+
+def send_text_dual_route(recipient_phone: str, message: str) -> Tuple[bool, str]:
+    """Sends text via iMessage first; automatically falls back to cellular SMS if non-Apple."""
+    safe_msg = message.replace('\\', '\\\\').replace('"', '\\"')
+    safe_phone = recipient_phone.replace('\\', '\\\\').replace('"', '\\"')
+
+    script = f'''
+    tell application "Messages"
+        -- Try iMessage first
+        try
+            set s to 1st account whose service type is iMessage
+            set p to participant "{safe_phone}" of s
+            send "{safe_msg}" to p
+            return "OK:iMessage"
+        on error err1
+            -- Fallback to Cellular SMS
+            try
+                set s to 1st account whose service type is SMS
+                set p to participant "{safe_phone}" of s
+                send "{safe_msg}" to p
+                return "OK:SMS"
+            on error err2
+                return "FAIL: iMessage(" & err1 & ") | SMS(" & err2 & ")"
+            end try
+        end try
+    end tell
+    '''
+    res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    out = res.stdout.strip()
+    if out.startswith("OK:"):
+        route = out.split(":", 1)[1]
+        return True, f"Delivered via {route}"
+    return False, out or res.stderr.strip() or "Unknown dispatch error"
+
+
+def dispatch_and_report(client_info: Dict, message: str, spoken: bool = True):
+    """Execute text dispatch and display verified terminal receipt."""
+    name = client_info.get("name", "Client")
+    phone = client_info.get("phone", "")
+
+    print(f"\n\033[1;34m╭─ 🚀 DISPATCHING CLIENT TEXT\033[0m")
+    print(f"\033[1;34m├─\033[0m Recipient: \033[1;37m{name}\033[0m (\033[1;36m{phone}\033[0m)")
+    print(f"\033[1;34m├─\033[0m Message:   \033[1;32m\"{message}\"\033[0m")
+    print(f"\033[1;34m├─\033[0m Sender:    \033[1;37mRick Jefferson · iPhone 14 (+1 945-308-8003)\033[0m")
+
+    if spoken:
+        speak(f"Sending to {name}: {message}")
+
+    success, detail = send_text_dual_route(phone, message)
+
+    if success:
+        print(f"\033[1;32m╰─ ✅ DISPATCH SUCCESSFUL: {detail}\033[0m\n")
+        if spoken:
+            speak(f"Text sent to {name} via your iPhone.", wait=False)
+    else:
+        print(f"\033[1;31m╰─ ❌ DISPATCH FAILED: {detail}\033[0m\n")
+        if spoken:
+            speak(f"Error sending text: {detail}", wait=False)
+
+
+def run_interactive_voice():
+    """Interactive hands-free voice loop with speech prompts and listening."""
+    print("\033[1;36m" + "="*60)
+    print("🎙️  APEX SOVEREIGN VOICE TEXTING · INTERACTIVE MODE")
+    print("   Sender ID: Rick Jefferson · iPhone 14 (+1 945-308-8003)")
+    print("="*60 + "\033[0m\n")
+
+    # Step 1: Prompt for Recipient
+    print("\033[1;33m[Step 1/2] Who do you want to text?\033[0m")
+    speak("Who do you want to text?")
+
+    recipient_input = ""
+    wav_path = "/tmp/apex_voice_recipient.wav"
+    print("\033[1;32m🎙️  Listening for Client Name or Number (Speak now, or type and press Enter):\033[0m ", end="", flush=True)
+
+    # Listen with timeout
+    if record_audio(wav_path, max_seconds=5):
+        heard = transcribe_audio(wav_path)
+        if heard:
+            print(f"\033[1;37m\"{heard}\"\033[0m")
+            # Check if this heard string already contains both recipient and message!
+            full_recip, full_msg = parse_voice_command(heard)
+            if full_recip and full_msg:
+                client = resolve_client(full_recip)
+                if client:
+                    dispatch_and_report(client, full_msg, spoken=True)
+                    return
+
+            recipient_input = heard
+
+    if not recipient_input:
+        recipient_input = input()
+
+    recipient_input = recipient_input.strip().rstrip('.')
+    if not recipient_input:
+        print("\033[1;31mNo recipient specified. Exiting.\033[0m")
+        return
+
+    # Check if user spoke a full sentence in text input
+    full_recip, full_msg = parse_voice_command(recipient_input)
+    if full_recip and full_msg:
+        client = resolve_client(full_recip)
+        if client:
+            dispatch_and_report(client, full_msg, spoken=True)
+            return
+
+    client = resolve_client(recipient_input)
+    if not client:
+        print(f"\033[1;31m❌ Client '{recipient_input}' not found in roster or AddressBook.\033[0m")
+        speak(f"I could not find {recipient_input} in your contacts. Please enter their phone number.")
+        raw_phone = input(f"Enter phone number for {recipient_input}: ").strip()
+        if not raw_phone:
+            return
+        phone = clean_phone_number(raw_phone)
+        client = {"name": recipient_input, "phone": phone, "category": "Ad-Hoc Client", "status": "Active"}
+
+    # Step 2: Prompt for Message
+    client_name = client.get("name", "client")
+    print(f"\n\033[1;33m[Step 2/2] What message would you like to send to {client_name}?\033[0m")
+    speak(f"What would you like to say to {client_name}?")
+
+    message_input = ""
+    wav_msg_path = "/tmp/apex_voice_msg.wav"
+    print(f"\033[1;32m🎙️  Listening for Message (Speak now, or type and press Enter):\033[0m ", end="", flush=True)
+
+    if record_audio(wav_msg_path, max_seconds=8):
+        heard_msg = transcribe_audio(wav_msg_path)
+        if heard_msg:
+            print(f"\033[1;37m\"{heard_msg}\"\033[0m")
+            message_input = heard_msg
+
+    if not message_input:
+        message_input = input()
+
+    message_input = message_input.strip()
+    if not message_input:
+        print("\033[1;31mEmpty message. Cancelled.\033[0m")
+        speak("Message was empty. Cancelled.")
+        return
+
+    dispatch_and_report(client, message_input, spoken=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Apex Voice Texting Engine — Hands-free client SMS/iMessage from iPhone 14",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("args", nargs="*", help="Voice command phrase or 'add' / 'list' subcommands")
+    parser.add_argument("--recipient", "-r", type=str, help="Recipient client name or phone number")
+    parser.add_argument("--message", "-m", type=str, help="Text message content")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Disable spoken voice feedback")
+    parser.add_argument("--web", action="store_true", help="Launch mobile Voice SMS Studio in browser/PWA")
+
+    parsed = parser.parse_args()
+
+    # Web Mode
+    if parsed.web:
+        check = subprocess.run(["lsof", "-i", ":7795"], capture_output=True, text=True)
+        if check.returncode != 0:
+            remote_bin = pathlib.Path.home() / ".local/bin/apex-remote"
+            subprocess.Popen([sys.executable, str(remote_bin)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(1.5)
+        print("\033[1;36m🎙️  Opening Apex Voice SMS Studio in your browser...\033[0m")
+        subprocess.run(["open", "http://localhost:7795#sms"])
+        return
+
+    # Subcommands
+    args = parsed.args
+    if args and args[0] == "list":
+        clients = load_clients()
+        print(f"\n\033[1;34m╭─ 📱 RJ BUSINESS SOLUTIONS · CLIENT DIRECTORY ({len(clients)} Active Clients)\033[0m")
+        if not clients:
+            print("│  (Roster is currently empty. Add clients with: voicetext add <name> <phone>)")
+        for i, c in enumerate(clients, 1):
+            print(f"│  {i}. \033[1;37m{c.get('name')}\033[0m — \033[1;36m{c.get('phone')}\033[0m [{c.get('category', 'Client')}]")
+        print("╰──────────────────────────────────────────────────────────\n")
+        return
+
+    if args and args[0] == "add":
+        if len(args) < 3:
+            print("Usage: voicetext add <name> <phone> [category]")
+            return
+        name = args[1]
+        phone = clean_phone_number(args[2])
+        category = args[3] if len(args) > 3 else "Credit Client"
+        clients = load_clients()
+        # Update existing or append
+        updated = False
+        for c in clients:
+            if c.get("name", "").lower() == name.lower() or c.get("phone") == phone:
+                c["name"] = name
+                c["phone"] = phone
+                c["category"] = category
+                updated = True
+                break
+        if not updated:
+            clients.append({"name": name, "phone": phone, "category": category, "status": "Active"})
+        save_clients(clients)
+        print(f"\033[1;32m✓ Saved client: {name} ({phone}) [{category}]\033[0m")
+        return
+
+    # Direct Flags --recipient and --message
+    if parsed.recipient and parsed.message:
+        client = resolve_client(parsed.recipient)
+        if not client:
+            client = {"name": parsed.recipient, "phone": clean_phone_number(parsed.recipient), "category": "Manual", "status": "Active"}
+        dispatch_and_report(client, parsed.message, spoken=not parsed.quiet)
+        return
+
+    # Positional Arguments
+    if args:
+        full_phrase = " ".join(args).strip()
+
+        # Case 1: Two positional arguments: "Jackie" "I am on my way"
+        if len(args) == 2 and not any(k in full_phrase.lower() for k in ["text ", "send ", "tell ", "message "]):
+            recip_arg, msg_arg = args[0], args[1]
+            client = resolve_client(recip_arg)
+            if not client:
+                client = {"name": recip_arg, "phone": clean_phone_number(recip_arg), "category": "Manual", "status": "Active"}
+            dispatch_and_report(client, msg_arg, spoken=not parsed.quiet)
+            return
+
+        # Case 2: Full natural language command e.g. "Text Melissa that your dispute letter has been mailed today"
+        recip, msg = parse_voice_command(full_phrase)
+        if recip and msg:
+            client = resolve_client(recip)
+            if not client:
+                client = {"name": recip, "phone": clean_phone_number(recip), "category": "Manual", "status": "Active"}
+            dispatch_and_report(client, msg, spoken=not parsed.quiet)
+            return
+
+        # If only recipient was parsed, prompt for message
+        client = resolve_client(full_phrase)
+        if client:
+            print(f"\033[1;33mWhat would you like to text {client.get('name')}?\033[0m")
+            speak(f"What would you like to text {client.get('name')}?")
+            msg = input(f"Message for {client.get('name')}: ").strip()
+            if msg:
+                dispatch_and_report(client, msg, spoken=not parsed.quiet)
+            return
+
+    # No arguments provided -> Full Interactive Voice Mode
+    run_interactive_voice()
+
+
+if __name__ == "__main__":
+    main()
