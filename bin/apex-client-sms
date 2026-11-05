@@ -1,0 +1,351 @@
+#!/usr/bin/env python3
+"""
+apex-client-sms — Autonomous Client Texting Suite
+Engineered exclusively for Rick Jefferson | RJ Business Solutions
+Enables automated, templated, and interactive client texting from Rick's iPhone 14 (+1 945-308-8003).
+
+Features:
+  - Dual iMessage + Cellular SMS fallback (works on both iPhone & Android clients)
+  - Pre-approved CROA-compliant business templates (Dispute, Invoice, Intake, Checkin, Deletion Congrats)
+  - Client roster management (JSON-backed at ~/.apex-workspace/clients.json)
+  - 1-on-1 direct messaging, templated messaging, or broadcast
+  - Interactive terminal mode
+
+Usage:
+  apex-client-sms send "Melissa" "Your update is ready."
+  apex-client-sms template dispute "Kaila"
+  apex-client-sms template invoice "Stephanie"
+  apex-client-sms list
+  apex-client-sms add "John Doe" "+12145551234" "Credit Client"
+  apex-client-sms                      # Interactive mode
+"""
+
+import os, sys, re, json, argparse, subprocess, glob
+from typing import List, Tuple, Optional, Dict
+
+CLIENTS_FILE = os.path.expanduser("~/.apex-workspace/clients.json")
+
+DEFAULT_TEMPLATES = {
+    "dispute": {
+        "title": "Dispute Round Mailed",
+        "text": "Hi {name}, Rick Jefferson with RJ Business Solutions. Your latest dispute letters have been officially mailed to Equifax, Experian, and TransUnion. We are tracking response deadlines daily and will update your file once the credit bureaus reply."
+    },
+    "invoice": {
+        "title": "Invoice / Payment Reminder",
+        "text": "Hi {name}, Rick Jefferson with RJ Business Solutions. This is a quick follow-up regarding your active account invoice. You can settle securely via Zelle to rjbizsolution23@gmail.com. Please reply once sent so we can immediately mark your account as paid."
+    },
+    "intake": {
+        "title": "SmartCredit Intake Request",
+        "text": "Hi {name}, Rick Jefferson here. To pull your updated 3-bureau credit report and continue our investigation, please log into your SmartCredit account and send over your updated login details or current report PDF."
+    },
+    "checkin": {
+        "title": "Monthly Progress Check-In",
+        "text": "Hi {name}, Rick Jefferson checking in on your profile progress. We have ongoing updates in your pipeline. Let me know if you have any questions or new bureau correspondence to review."
+    },
+    "congrats": {
+        "title": "Deletion / Score Increase Celebration",
+        "text": "Great news {name}! We just verified a positive update on your credit profile with recent negative items successfully removed. Keep maintaining low utilization while we push for the next milestone! - Rick Jefferson"
+    }
+}
+
+SEED_CLIENTS = [
+    {"name": "Melissa Harrison", "phone": "+12146972366", "category": "Credit Client", "status": "Active"},
+    {"name": "Kaila Troy", "phone": "+13128430084", "category": "Credit Client", "status": "Active"},
+    {"name": "Stephanie Cresit", "phone": "+12143356270", "category": "Credit Client", "status": "Active"},
+    {"name": "Tia Cannon", "phone": "+14142186043", "category": "Credit Client", "status": "Active"},
+    {"name": "Tiffany Hale", "phone": "+14147128871", "category": "Credit Client", "status": "Active"},
+    {"name": "Amanda Boyd", "phone": "+14144999873", "category": "Credit Client", "status": "Active"},
+    {"name": "Shannon Nunn", "phone": "+18329339900", "category": "Business Partner", "status": "Active"},
+    {"name": "Antoine Solomon", "phone": "+14143993277", "category": "Tech Partner", "status": "Active"}
+]
+
+def load_clients() -> List[Dict]:
+    os.makedirs(os.path.dirname(CLIENTS_FILE), exist_ok=True)
+    if not os.path.exists(CLIENTS_FILE):
+        with open(CLIENTS_FILE, 'w') as f:
+            json.dump(SEED_CLIENTS, f, indent=2)
+        return SEED_CLIENTS
+    try:
+        with open(CLIENTS_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return SEED_CLIENTS
+
+def save_clients(clients: List[Dict]):
+    os.makedirs(os.path.dirname(CLIENTS_FILE), exist_ok=True)
+    with open(CLIENTS_FILE, 'w') as f:
+        json.dump(clients, f, indent=2)
+
+def clean_phone_number(raw: str) -> str:
+    digits = re.sub(r"[^\d+]", "", raw.strip())
+    if digits.startswith("+"):
+        return digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+1" + digits
+    return "+" + digits if digits else ""
+
+def resolve_client(query: str, clients: List[Dict]) -> Optional[Dict]:
+    query_clean = clean_phone_number(query)
+    q_lower = query.lower()
+    
+    # 1. Match in client list by phone or name
+    for c in clients:
+        if clean_phone_number(c['phone']) == query_clean:
+            return c
+        if q_lower in c['name'].lower():
+            return c
+            
+    # 2. Check macOS Contacts
+    for path in glob.glob(os.path.expanduser('~/Library/Application Support/AddressBook/Sources/*/AddressBook-v22.abcddb')):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT r.ZFIRSTNAME, r.ZLASTNAME, p.ZFULLNUMBER
+                FROM ZABCDPHONENUMBER p
+                JOIN ZABCDRECORD r ON p.ZOWNER = r.Z_PK
+            ''')
+            for fn, ln, num in cur.fetchall():
+                if num:
+                    cname = f"{fn or ''} {ln or ''}".strip()
+                    cphone = clean_phone_number(num)
+                    if q_lower in cname.lower() or cphone == query_clean:
+                        conn.close()
+                        return {"name": cname, "phone": cphone, "category": "AddressBook Contact", "status": "Active"}
+            conn.close()
+        except Exception:
+            pass
+            
+    # 3. Direct valid phone number
+    if len(re.sub(r'\D', '', query_clean)) >= 10:
+        return {"name": query, "phone": query_clean, "category": "Manual Number", "status": "Active"}
+        
+    return None
+
+def send_text_dual_route(recipient_phone: str, message: str) -> Tuple[bool, str]:
+    """Sends text via iMessage first; automatically falls back to cellular SMS if non-Apple."""
+    safe_msg = message.replace('\\', '\\\\').replace('"', '\\"')
+    safe_phone = recipient_phone.replace('\\', '\\\\').replace('"', '\\"')
+    
+    script = f'''
+    tell application "Messages"
+        -- Try iMessage first
+        try
+            set s to 1st account whose service type is iMessage
+            set p to participant "{safe_phone}" of s
+            send "{safe_msg}" to p
+            return "OK:iMessage"
+        on error err1
+            -- Fallback to Cellular SMS
+            try
+                set s to 1st account whose service type is SMS
+                set p to participant "{safe_phone}" of s
+                send "{safe_msg}" to p
+                return "OK:SMS"
+            on error err2
+                return "FAIL: iMessage(" & err1 & ") | SMS(" & err2 & ")"
+            end try
+        end try
+    end tell
+    '''
+    res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    out = res.stdout.strip()
+    if out.startswith("OK:"):
+        route = out.split(":", 1)[1]
+        return True, f"Delivered via {route}"
+    return False, out or res.stderr.strip() or "Unknown dispatch error"
+
+def main():
+    parser = argparse.ArgumentParser(description="Apex Autonomous Client Texting Suite")
+    subparsers = parser.add_subparsers(dest="subcommand")
+
+    # Command: send
+    send_parser = subparsers.add_parser("send", help="Send a custom text to a client")
+    send_parser.add_argument("recipient", help="Client name or phone number")
+    send_parser.add_argument("message", help="Message body")
+
+    # Command: template
+    tpl_parser = subparsers.add_parser("template", help="Send a pre-approved template to a client")
+    tpl_parser.add_argument("template_key", choices=list(DEFAULT_TEMPLATES.keys()), help="Template: dispute, invoice, intake, checkin, congrats")
+    tpl_parser.add_argument("recipient", help="Client name or phone number")
+
+    # Command: list
+    subparsers.add_parser("list", help="List all clients in directory")
+
+    # Command: templates
+    subparsers.add_parser("templates", help="View available business templates")
+
+    # Command: add
+    add_parser = subparsers.add_parser("add", help="Add a new client to directory")
+    add_parser.add_argument("name", help="Client Full Name")
+    add_parser.add_argument("phone", help="Client Phone Number")
+    add_parser.add_argument("category", nargs="?", default="Credit Client", help="Category / Tag")
+
+    # Command: broadcast
+    bcast_parser = subparsers.add_parser("broadcast", help="Broadcast a template to a client category")
+    bcast_parser.add_argument("template_key", choices=list(DEFAULT_TEMPLATES.keys()), help="Template to send")
+    bcast_parser.add_argument("--category", default="Credit Client", help="Filter by category")
+    bcast_parser.add_argument("--execute", action="store_true", help="Execute send (default is dry-run)")
+
+    args = parser.parse_args()
+    clients = load_clients()
+
+    print("\033[1;34m╭─ 📱 RJ BUSINESS SOLUTIONS · AUTONOMOUS CLIENT MESSENGER\033[0m")
+    print("\033[1;30m├─ Sender ID: Rick Jefferson · iPhone 14 (+1 945-308-8003)\033[0m")
+
+    # 1. LIST COMMAND
+    if args.subcommand == "list":
+        print(f"\033[1;32m├─ 📋 Client Directory ({len(clients)} Active Clients):\033[0m")
+        for idx, c in enumerate(clients, 1):
+            print(f"│  {idx:2d}. \033[1;37m{c['name']:25s}\033[0m | \033[1;36m{c['phone']:14s}\033[0m | \033[1;33m{c.get('category','Client'):15s}\033[0m")
+        print("\033[1;34m╰─ To text a client: apex-client-sms template <dispute|invoice|intake> \"<Name>\"\033[0m\n")
+        return
+
+    # 2. TEMPLATES COMMAND
+    if args.subcommand == "templates":
+        print(f"\033[1;32m├─ 📑 Available Business Templates:\033[0m")
+        for key, tpl in DEFAULT_TEMPLATES.items():
+            print(f"│  • \033[1;33m{key:8s}\033[0m : \033[1;37m{tpl['title']}\033[0m")
+            print(f"│    \"{tpl['text']}\"\n│")
+        print("\033[1;34m╰─ Usage: apex-client-sms template <key> \"<Client Name>\"\033[0m\n")
+        return
+
+    # 3. ADD COMMAND
+    if args.subcommand == "add":
+        new_client = {
+            "name": args.name,
+            "phone": clean_phone_number(args.phone),
+            "category": args.category,
+            "status": "Active"
+        }
+        clients.append(new_client)
+        save_clients(clients)
+        print(f"\033[1;32m╰─ ✓ Added Client:\033[0m {new_client['name']} ({new_client['phone']}) as {new_client['category']}\n")
+        return
+
+    # 4. SEND CUSTOM TEXT
+    if args.subcommand == "send":
+        client = resolve_client(args.recipient, clients)
+        if not client:
+            print(f"\033[1;31m╰─ ✗ Client '{args.recipient}' not found in Directory or Contacts.\033[0m\n")
+            return
+        print(f"\033[1;35m├─ 🚀 Dispatching to {client['name']} ({client['phone']})...\033[0m")
+        success, detail = send_text_dual_route(client['phone'], args.message)
+        if success:
+            print(f"\033[1;32m╰─ ✓ SENT SUCCESSFULLY:\033[0m \"{args.message}\" &rarr; {client['name']} ({detail})\n")
+        else:
+            print(f"\033[1;31m╰─ ✗ Send Failed:\033[0m {detail}\n")
+        return
+
+    # 5. SEND TEMPLATE
+    if args.subcommand == "template":
+        client = resolve_client(args.recipient, clients)
+        if not client:
+            print(f"\033[1;31m╰─ ✗ Client '{args.recipient}' not found.\033[0m\n")
+            return
+        tpl = DEFAULT_TEMPLATES[args.template_key]
+        first_name = client['name'].split()[0]
+        rendered_msg = tpl['text'].format(name=first_name)
+        
+        print(f"\033[1;36m├─ 📑 Template Selected:\033[0m {tpl['title']}")
+        print(f"\033[1;37m├─ Recipient:\033[0m {client['name']} ({client['phone']})")
+        print(f"\033[1;33m├─ Message Preview:\033[0m \"{rendered_msg}\"")
+        
+        success, detail = send_text_dual_route(client['phone'], rendered_msg)
+        if success:
+            print(f"\033[1;32m╰─ ✓ TEMPLATE DELIVERED:\033[0m ({detail})\n")
+        else:
+            print(f"\033[1;31m╰─ ✗ Send Failed:\033[0m {detail}\n")
+        return
+
+    # 6. BROADCAST
+    if args.subcommand == "broadcast":
+        tpl = DEFAULT_TEMPLATES[args.template_key]
+        targets = [c for c in clients if c.get('category') == args.category and c.get('status') == 'Active']
+        print(f"\033[1;33m├─ 📢 Broadcast Mode: {tpl['title']} to {len(targets)} {args.category}(s)\033[0m")
+        if not args.execute:
+            print("\033[1;33m├─ [DRY-RUN] Pass '--execute' to dispatch texts.\033[0m")
+            for t in targets:
+                fname = t['name'].split()[0]
+                print(f"│  • Would send to \033[1;37m{t['name']}\033[0m ({t['phone']}): \"{tpl['text'].format(name=fname)[:70]}...\"")
+            print("\033[1;34m╰─ Execute with: apex-client-sms broadcast " + args.template_key + " --execute\033[0m\n")
+            return
+            
+        print(f"\033[1;35m├─ Dispatching to {len(targets)} clients...\033[0m")
+        sent_count = 0
+        for t in targets:
+            fname = t['name'].split()[0]
+            msg = tpl['text'].format(name=fname)
+            ok, det = send_text_dual_route(t['phone'], msg)
+            if ok:
+                sent_count += 1
+                print(f"│  ✓ Delivered to {t['name']} ({det})")
+            else:
+                print(f"│  ✗ Failed for {t['name']}: {det}")
+        print(f"\033[1;32m╰─ ✓ Broadcast complete: {sent_count}/{len(targets)} delivered.\033[0m\n")
+        return
+
+    # 7. INTERACTIVE PROMPT (No arguments passed)
+    print("\033[1;36m├─ 🎯 Interactive Client Texting Menu:\033[0m")
+    print("│  1. Pick a Client & Send a Business Template (Dispute / Invoice / Intake)")
+    print("│  2. Send a Custom Quick Text to a Client")
+    print("│  3. View Client Directory")
+    print("│  4. Add New Client")
+    print("│  0. Exit")
+    
+    choice = input("\033[1;33m├─ Select Option [1-4]: \033[0m").strip()
+    if choice == "1":
+        print("\n\033[1;32mAvailable Clients:\033[0m")
+        for i, c in enumerate(clients, 1):
+            print(f"  {i}. {c['name']} ({c['phone']}) - {c.get('category','Client')}")
+        c_idx = int(input("\nSelect Client [number]: ").strip()) - 1
+        client = clients[c_idx]
+        
+        print("\n\033[1;33mSelect Template:\033[0m")
+        tpl_keys = list(DEFAULT_TEMPLATES.keys())
+        for i, k in enumerate(tpl_keys, 1):
+            print(f"  {i}. {DEFAULT_TEMPLATES[k]['title']}")
+        t_idx = int(input("Select Template [number]: ").strip()) - 1
+        selected_key = tpl_keys[t_idx]
+        
+        fname = client['name'].split()[0]
+        msg = DEFAULT_TEMPLATES[selected_key]['text'].format(name=fname)
+        print(f"\n\033[1;37mMessage Preview:\033[0m\n\"{msg}\"")
+        conf = input("\nSend now? [Y/n]: ").strip().lower()
+        if conf in ("", "y", "yes"):
+            ok, det = send_text_dual_route(client['phone'], msg)
+            if ok:
+                print(f"\033[1;32m✓ Sent successfully via {det}!\033[0m\n")
+            else:
+                print(f"\033[1;31m✗ Error: {det}\033[0m\n")
+    elif choice == "2":
+        q = input("\nEnter Client Name or Phone: ").strip()
+        client = resolve_client(q, clients)
+        if not client:
+            print("\033[1;31mClient not found.\033[0m")
+            return
+        msg = input(f"Type message for {client['name']}: ").strip()
+        if msg:
+            ok, det = send_text_dual_route(client['phone'], msg)
+            if ok:
+                print(f"\033[1;32m✓ Sent successfully via {det}!\033[0m\n")
+            else:
+                print(f"\033[1;31m✗ Error: {det}\033[0m\n")
+    elif choice == "3":
+        for i, c in enumerate(clients, 1):
+            print(f"  {i}. {c['name']:25s} | {c['phone']} | {c.get('category','Client')}")
+    elif choice == "4":
+        name = input("Client Full Name: ").strip()
+        ph = clean_phone_number(input("Phone Number: ").strip())
+        cat = input("Category (default 'Credit Client'): ").strip() or "Credit Client"
+        clients.append({"name": name, "phone": ph, "category": cat, "status": "Active"})
+        save_clients(clients)
+        print(f"\033[1;32m✓ Added {name} to directory!\033[0m\n")
+    else:
+        print("Exiting.")
+
+if __name__ == "__main__":
+    main()

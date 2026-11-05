@@ -17,6 +17,9 @@
 | `axswarm <task>`|`noglob apex-agent --swarm`| Autonomous subagent swarm delegation under MASS barrier discipline |
 | `text <to> <msg>`| `noglob apex-sms` | Sovereign SMS/iMessage messenger to contact names or phone numbers |
 | `sms <to> <msg>` | `noglob apex-sms` | SMS Messenger alias |
+| `clients` | `noglob apex-client-sms` | Autonomous Client Texting Suite (Interactive menu, templates, broadcast) |
+| `client-sms` | `noglob apex-client-sms` | Client Texting Suite alias |
+| `axc` | `noglob apex-client-sms` | Client Texting shortcut |
 | `axr` | `apex-remote` | Remote iPhone 14 PWA & Cloudflare Zero-Trust Tunnel Command Center |
 | `axv` | `apex-voice` | Voice-to-Build Intelligence Studio with macOS Speech & audio reply |
 | `ai <request>` | `noglob venice` | Natural-Language Semantic Neural Router across 9 Venice Models |
